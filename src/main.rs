@@ -1,4 +1,6 @@
-mod connection;
+mod mail;
+mod commands;
+mod request;
 
 use std::io::{BufRead, BufReader, Read};
 use std::net::TcpListener;
@@ -12,7 +14,6 @@ fn main() {
 
         let mut string = String::new();
         reader.read_line(&mut string).unwrap();
-
 
         println!("{:02X?}", string.as_bytes());
 
