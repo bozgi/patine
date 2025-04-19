@@ -6,23 +6,20 @@ struct Ehlo {
 }
 
 impl Command for Ehlo {
-    fn execute(&mut self) {
-        let mut response: String = String::new();
-        if self.lines.len() == 0 {
-            response = format!("250 {}", self.greeting);
-            return;
+    fn execute(&mut self) -> Result<String, String> {
+        if self.lines.is_empty() {
+            return Ok(format!("250 {}", self.greeting));
         }
 
-        response.push_str(format!("250-{}\r\n", self.greeting).as_str());
-
-        for (index, line) in &self.lines.iter().enumerate() {
-            if index == self.lines.len() - 1 {
-                response.push_str(format!("250 {}\r\n", line).as_str());
-                break
-            }
-            response.push_str(format!("250-{}\r\n", line).as_str());
+        let mut response = format!("250-{}\r\n", self.greeting);
+        for line in self.lines.iter().take(self.lines.len() - 1) {
+            response.push_str(&format!("250-{}\r\n", line));
         }
 
+        if let Some(last) = self.lines.last() {
+            response.push_str(&format!("250 {}", last));
+        }
 
+        Ok(response)
     }
 }
