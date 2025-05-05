@@ -1,19 +1,26 @@
 mod mail;
 mod commands;
 mod request;
+mod connection;
 
 use std::io::{BufRead, Read};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use tokio::net::TcpListener;
+use tokio_util::codec::{Framed, LinesCodec};
+use crate::request::handle_request;
 
 #[tokio::main]
 async fn main() {
-    let mut listener = TcpListener::bind("127.0.0.1:4450").await.unwrap();
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+
+    let listener = TcpListener::bind("127.0.0.1:4450").await.unwrap();
 
     loop {
-        let (mut socket, _) = listener.accept().await.unwrap();
+        let (socket, addr) = listener.accept().await.unwrap();
         tokio::spawn(async move {
-            todo!("Handle requests")
+            tracing::info!("Accepted connection from {:?}", addr);
+            handle_request(socket).await;
         });
     }
 }

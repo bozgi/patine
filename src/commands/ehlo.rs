@@ -5,6 +5,10 @@ struct Ehlo {
     lines: Vec<String>,
 }
 
+enum EhloFrame {
+    
+}
+
 impl Command for Ehlo {
     fn execute(&mut self) -> Result<String, String> {
         if self.lines.is_empty() {
