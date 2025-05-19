@@ -1,22 +1,18 @@
 use bytes::{BufMut, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, trace};
+use crate::commands::codec_state::CodecState;
 use crate::commands::smtp_command::SmtpCommand;
 use crate::commands::smtp_response::SmtpResponse;
 
 pub struct SmtpCodec {
-    state: SmtpState,
-}
-
-enum SmtpState {
-    Command,
-    Data
+    state: CodecState
 }
 
 impl SmtpCodec {
     pub fn new() -> SmtpCodec {
         Self {
-            state: SmtpState::Command
+            state: CodecState::Regular
         }
     }
 }
@@ -31,15 +27,7 @@ impl Decoder for SmtpCodec {
             let line = src.split_to(position + 2);
             let line = String::from_utf8_lossy(&line[..line.len() - 2]);
 
-            match self.state {
-                SmtpState::Command => {
-                    Ok(Some(SmtpCommand::from(line.to_string())))
-                }
-                SmtpState::Data => {
-                    Ok(Some(SmtpCommand::Unknown))
-                }
-            }
-
+            Ok(Some(SmtpCommand::from(line.to_string())))
         } else {
             Ok(None)
         }

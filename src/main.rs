@@ -1,14 +1,14 @@
 mod mail;
 mod commands;
-mod request;
 mod server;
+mod smtp_state;
 
 use std::io::{BufRead, Read};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio_util::codec::{Framed, LinesCodec};
 use tracing::Level;
-use crate::request::handle_request;
+use crate::server::transaction::SmtpTransaction;
 
 #[tokio::main]
 async fn main() {
@@ -23,7 +23,8 @@ async fn main() {
         let (socket, addr) = listener.accept().await.unwrap();
         tokio::spawn(async move {
             tracing::info!("Accepted connection from {:?}", addr);
-            handle_request(socket).await;
+            let mut transaction = SmtpTransaction::new(socket);
+            transaction.handle_connection().await;
         });
     }
 }
