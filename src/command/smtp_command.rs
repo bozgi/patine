@@ -1,11 +1,9 @@
-use std::fmt::Display;
-
 #[derive(Debug)]
 pub enum SmtpCommand {
     Helo(String),
     Ehlo(String),
-    MailFrom(String),
-    RcptTo(String),
+    Mail(String),
+    Rcpt(String),
     Data(String),
     Rset,
     Noop,
@@ -23,9 +21,9 @@ impl SmtpCommand {
         } else if string.starts_with("helo") {
             SmtpCommand::Helo("Hellow!".to_string())
         } else if string.starts_with("mail") {
-            SmtpCommand::MailFrom("Mail from".to_string())
+            SmtpCommand::Mail("Mail from".to_string())
         } else if string.starts_with("rcpt") {
-            SmtpCommand::RcptTo("".to_string())
+            SmtpCommand::Rcpt("".to_string())
         } else if string.starts_with("data") {
             SmtpCommand::Data("".to_string())
         } else if string.starts_with("rset") {
@@ -38,6 +36,21 @@ impl SmtpCommand {
             SmtpCommand::Vrfy("".to_string())
         } else {
             SmtpCommand::Unknown
+        }
+    }
+
+    pub fn name(&self) -> Option<&'static str> {
+        match self {
+            SmtpCommand::Helo(_) => Some("helo"),
+            SmtpCommand::Ehlo(_) => Some("ehlo"),
+            SmtpCommand::Mail(_) => Some("mail"),
+            SmtpCommand::Rcpt(_) => Some("rcpt"),
+            SmtpCommand::Data(_) => Some("data"),
+            SmtpCommand::Rset => Some("rset"),
+            SmtpCommand::Noop => Some("noop"),
+            SmtpCommand::Quit => Some("quit"),
+            SmtpCommand::Vrfy(_) => Some("vrfy"),
+            SmtpCommand::Unknown => None,
         }
     }
 }

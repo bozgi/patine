@@ -1,14 +1,10 @@
-mod mail;
-mod commands;
+mod command;
 mod server;
-mod smtp_state;
+mod io;
 
-use std::io::{BufRead, Read};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio_util::codec::{Framed, LinesCodec};
 use tracing::Level;
-use crate::server::transaction::SmtpTransaction;
+use io::transaction::SmtpTransaction;
 
 #[tokio::main]
 async fn main() {

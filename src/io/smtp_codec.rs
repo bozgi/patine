@@ -1,9 +1,9 @@
-use bytes::{BufMut, BytesMut};
+use crate::command::smtp_command::SmtpCommand;
+use crate::io::codec_state::CodecState;
+use crate::io::smtp_response::SmtpResponse;
+use bytes::{BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, trace};
-use crate::commands::codec_state::CodecState;
-use crate::commands::smtp_command::SmtpCommand;
-use crate::commands::smtp_response::SmtpResponse;
 
 pub struct SmtpCodec {
     state: CodecState
