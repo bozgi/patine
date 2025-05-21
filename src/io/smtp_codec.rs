@@ -4,6 +4,7 @@ use crate::io::smtp_response::SmtpResponse;
 use bytes::{BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, trace};
+use crate::io::smtp_state::SmtpState;
 
 pub struct SmtpCodec {
     state: CodecState
@@ -27,7 +28,13 @@ impl Decoder for SmtpCodec {
             let line = src.split_to(position + 2);
             let line = String::from_utf8_lossy(&line[..line.len() - 2]);
 
-            Ok(Some(SmtpCommand::from(line.to_string())))
+            let command = Some(SmtpCommand::from(line.to_string()));
+
+            if let SmtpCommand::Data(_) = &command {
+                self.state = CodecState::Data("".to_string());
+            }
+
+            Ok(command)
         } else {
             Ok(None)
         }

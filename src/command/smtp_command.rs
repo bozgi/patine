@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum SmtpCommand {
     Helo(String),
     Ehlo(String),
