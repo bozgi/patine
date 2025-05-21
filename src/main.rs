@@ -1,6 +1,7 @@
 mod command;
 mod server;
 mod io;
+mod storage;
 
 use tokio::net::TcpListener;
 use tracing::Level;

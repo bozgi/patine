@@ -1,4 +1,4 @@
 pub enum CodecState {
     Regular,
-    Data,
+    Data(String),
 }
