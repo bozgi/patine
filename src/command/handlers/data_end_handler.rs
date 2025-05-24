@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use tracing_subscriber::fmt::format::Format;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
+use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 use crate::storage::maildir::{check_maildir, write_to_maildir, MAILDIR_ROOT};
 
@@ -25,6 +26,10 @@ impl CommandHandler for DataEndHandler {
                     } else {
                         unimplemented!("Forwarding is not implemented yet!");
                     }
+
+                    txn.state = SmtpState::Greeted;
+                    txn.from = None;
+                    txn.to = None;
                 }
             }
 

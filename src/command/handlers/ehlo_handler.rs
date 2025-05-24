@@ -12,6 +12,7 @@ impl CommandHandler for EhloHandler {
         if let SmtpCommand::Ehlo(domain) = command {
             if domain.trim().is_empty() {
                 txn.send_line(501, String::from("Invalid argument")).await;
+                return;
             }
 
             match txn.state {
