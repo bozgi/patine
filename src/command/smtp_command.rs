@@ -4,28 +4,30 @@ pub enum SmtpCommand {
     Ehlo(String),
     Mail(String),
     Rcpt(String),
-    Data(String),
+    Data,
     Rset,
     Noop,
     Quit,
     Vrfy(String),
-    Unknown
+    Unknown,
+    DataEnd(Vec<u8>), // not an SMTP command, but a data passing object for handling mail delivery
 }
 
 impl SmtpCommand {
     pub fn from(string: String) -> Self {
         let string = string.to_lowercase();
+        let params = string.get(4..).unwrap_or("").trim().to_string();
 
         if string.starts_with("ehlo") {
-            SmtpCommand::Ehlo("Hellow!".to_string())
+            SmtpCommand::Ehlo(params)
         } else if string.starts_with("helo") {
-            SmtpCommand::Helo("Hellow!".to_string())
+            SmtpCommand::Helo(params)
         } else if string.starts_with("mail") {
-            SmtpCommand::Mail("Mail from".to_string())
+            SmtpCommand::Mail(params)
         } else if string.starts_with("rcpt") {
-            SmtpCommand::Rcpt("".to_string())
+            SmtpCommand::Rcpt(params)
         } else if string.starts_with("data") {
-            SmtpCommand::Data("".to_string())
+            SmtpCommand::Data
         } else if string.starts_with("rset") {
             SmtpCommand::Rset
         } else if string.starts_with("noop") {
@@ -33,7 +35,7 @@ impl SmtpCommand {
         } else if string.starts_with("quit") {
             SmtpCommand::Quit
         } else if string.starts_with("vrfy") {
-            SmtpCommand::Vrfy("".to_string())
+            SmtpCommand::Vrfy(params)
         } else {
             SmtpCommand::Unknown
         }
@@ -45,12 +47,13 @@ impl SmtpCommand {
             SmtpCommand::Ehlo(_) => Some("ehlo"),
             SmtpCommand::Mail(_) => Some("mail"),
             SmtpCommand::Rcpt(_) => Some("rcpt"),
-            SmtpCommand::Data(_) => Some("data"),
+            SmtpCommand::Data => Some("data"),
             SmtpCommand::Rset => Some("rset"),
             SmtpCommand::Noop => Some("noop"),
             SmtpCommand::Quit => Some("quit"),
             SmtpCommand::Vrfy(_) => Some("vrfy"),
-            SmtpCommand::Unknown => None,
+            SmtpCommand::DataEnd(_) => Some("data_end"),
+            _ => None,
         }
     }
 }

@@ -24,19 +24,34 @@ impl Decoder for SmtpCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         trace!("Decoding SmtpCodec with the current size {:?}", src.len());
-        if let Some(position) = src.windows(2).position(|window| window == b"\r\n") {
-            let line = src.split_to(position + 2);
-            let line = String::from_utf8_lossy(&line[..line.len() - 2]);
+        match &self.state {
+            CodecState::Regular => {
+                if let Some(position) = src.windows(2).position(|window| window == b"\r\n") {
+                    let line = src.split_to(position + 2);
+                    let line = String::from_utf8_lossy(&line[..line.len() - 2]);
 
-            let command = Some(SmtpCommand::from(line.to_string()));
+                    let command = Some(SmtpCommand::from(line.to_string()));
 
-            if let SmtpCommand::Data(_) = &command {
-                self.state = CodecState::Data("".to_string());
+                    if let Some(SmtpCommand::Data) = &command {
+                        self.state = CodecState::Data;
+                    }
+
+                    Ok(command)
+                } else {
+                    Ok(None)
+                }
             }
+            CodecState::Data => {
+                if let Some(position) = src.windows(5).position(|window| window == b"\r\n.\r\n") {
+                    let mail = src.split_to(position + 5);
+                    let mail_bytes = mail[..mail.len() - 5].to_vec();
 
-            Ok(command)
-        } else {
-            Ok(None)
+                    self.state = CodecState::Regular;
+                    Ok(Some(SmtpCommand::DataEnd(mail_bytes)))
+                } else {
+                    Ok(None)
+                }
+            }
         }
     }
 }

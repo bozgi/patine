@@ -10,4 +10,5 @@ mod noop_handler;
 mod quit_handler;
 mod vrfy_handler;
 pub mod registry;
+mod data_end_handler;
 

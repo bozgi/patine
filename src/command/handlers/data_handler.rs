@@ -9,7 +9,7 @@ pub struct DataHandler;
 #[async_trait]
 impl CommandHandler for DataHandler {
     async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
-        if let SmtpCommand::Data(_) = command {
+        if let SmtpCommand::Data = command {
             match txn.state {
                 SmtpState::Addressing => {
                     txn.state = SmtpState::Sending;
