@@ -1,12 +1,18 @@
 use crate::command::smtp_command::SmtpCommand;
-use crate::io::smtp_codec::SmtpCodec;
+use crate::io::smtp_server_codec::SmtpServerCodec;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use futures::{SinkExt, StreamExt};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tracing::trace;
 use crate::command::handlers::registry::HANDLERS;
+use crate::io::smtp_client_codec::SmtpClientCodec;
+use crate::io::tls::ACCEPTOR;
+
+trait AsyncIO: AsyncRead + AsyncWrite {}
+impl<T: AsyncRead + AsyncWrite + ?Sized> AsyncIO for T {}
 
 pub struct SmtpTransaction {
     pub tls: bool,
@@ -14,18 +20,18 @@ pub struct SmtpTransaction {
     pub state: SmtpState,
     pub from: Option<String>,
     pub to: Option<Vec<String>>,
-    framed: Framed<TcpStream, SmtpCodec>,
+    framed: Framed<Box<dyn AsyncIO + Unpin + Send>, SmtpServerCodec>,
 }
 
 impl SmtpTransaction {
-    pub fn new(tcp_stream: TcpStream) -> SmtpTransaction {
+    pub fn new_server(tcp_stream: TcpStream) -> SmtpTransaction {
         Self {
             tls: false,
             esmtp: false,
             state: SmtpState::Connected,
             from: None,
             to: None,
-            framed: Framed::new(tcp_stream, SmtpCodec::new()),
+            framed: Framed::new(Box::new(tcp_stream), SmtpServerCodec::new()),
         }
     }
 
@@ -58,5 +64,21 @@ impl SmtpTransaction {
         self.framed.send(SmtpResponse::Multiline(code, message))
             .await
             .unwrap();
+    }
+
+    pub async fn starttls(&mut self) {
+        let old_framed = std::mem::replace(
+            &mut self.framed,
+            Framed::new(Box::new(tokio::io::empty()), SmtpServerCodec::new()),
+        );
+
+        let tcp_stream = old_framed.into_inner();
+        let tls_stream = ACCEPTOR.accept(tcp_stream).await.unwrap();
+
+        self.framed = Framed::new(Box::new(tls_stream), SmtpServerCodec::new());
+        self.tls = true;
+        self.state = SmtpState::Connected;
+        self.from = None;
+        self.to = None;
     }
 }

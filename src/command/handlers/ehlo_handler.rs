@@ -19,7 +19,12 @@ impl CommandHandler for EhloHandler {
                 SmtpState::Connected => {
                     txn.state = SmtpState::Greeted;
                     txn.esmtp = true;
-                    txn.send_line(250, String::from("Hello!")).await;
+                    txn.send_multiline(250, vec![
+                        "SIZE 35882577".to_string(),
+                        "STARTTLS".to_string(),
+                        "8BITMIME".to_string(),
+                        "SMTPUTF8".to_string()
+                    ]).await;
                 }
                 _ => txn.send_line(503, String::from("Bad sequence of commands")).await
             }

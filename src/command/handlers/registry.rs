@@ -11,6 +11,7 @@ use crate::command::handlers::noop_handler::NoopHandler;
 use crate::command::handlers::quit_handler::QuitHandler;
 use crate::command::handlers::rcpt_handler::RcptHandler;
 use crate::command::handlers::rset_handler::RsetHandler;
+use crate::command::handlers::starttls_handler::StarttlsHandler;
 use crate::command::handlers::vrfy_handler::VrfyHandler;
 
 pub static HANDLERS: Lazy<HashMap<&'static str, Arc<dyn CommandHandler + Send + Sync>>> = Lazy::new(|| {
@@ -25,5 +26,6 @@ pub static HANDLERS: Lazy<HashMap<&'static str, Arc<dyn CommandHandler + Send + 
     handlers.insert("rset", Arc::new(RsetHandler));
     handlers.insert("vrfy", Arc::new(VrfyHandler));
     handlers.insert("data_end", Arc::new(DataEndHandler));
+    handlers.insert("starttls", Arc::new(StarttlsHandler));
     handlers
 });

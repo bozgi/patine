@@ -1,5 +1,4 @@
 mod command;
-mod server;
 mod io;
 mod storage;
 
@@ -31,7 +30,7 @@ async fn main() {
         let (socket, addr) = listener.accept().await.unwrap();
         tokio::spawn(async move {
             info!("Accepted connection from {:?}", addr);
-            let mut transaction = SmtpTransaction::new(socket);
+            let mut transaction = SmtpTransaction::new_server(socket);
             transaction.handle_connection().await;
         });
     }

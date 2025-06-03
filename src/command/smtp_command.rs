@@ -9,6 +9,7 @@ pub enum SmtpCommand {
     Noop,
     Quit,
     Vrfy(String),
+    Starttls,
     Unknown,
     DataEnd(Vec<u8>), // not an SMTP command, but a data passing object for handling mail delivery
 }
@@ -36,6 +37,8 @@ impl SmtpCommand {
             SmtpCommand::Quit
         } else if string.starts_with("vrfy") {
             SmtpCommand::Vrfy(params)
+        } else if string.starts_with("starttls") {
+            SmtpCommand::Starttls
         } else {
             SmtpCommand::Unknown
         }
@@ -52,6 +55,7 @@ impl SmtpCommand {
             SmtpCommand::Noop => Some("noop"),
             SmtpCommand::Quit => Some("quit"),
             SmtpCommand::Vrfy(_) => Some("vrfy"),
+            SmtpCommand::Starttls => Some("starttls"),
             SmtpCommand::DataEnd(_) => Some("data_end"),
             _ => None,
         }
