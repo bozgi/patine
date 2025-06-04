@@ -22,7 +22,7 @@ impl CommandHandler for DataEndHandler {
                 if let Some((mailbox, domain)) = mailbox.split_once("@") {
                     if domain == DOMAIN.get().expect("DOMAIN set in main") {
                         check_maildir(mailbox).await.unwrap();
-                        write_to_maildir(Path::new(&mailbox), &body).await.unwrap();
+                        write_to_maildir(mailbox, &body).await.unwrap();
                     } else {
                         unimplemented!("Forwarding is not implemented yet!");
                     }

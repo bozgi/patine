@@ -11,33 +11,29 @@ use tracing::warn;
 pub static MAILDIR_ROOT: OnceLock<String> = OnceLock::new();
 pub static DOMAIN: OnceLock<String> = OnceLock::new();
 
-pub async fn check_maildir(maildir: &str) -> std::io::Result<()> {
+
+pub async fn check_maildir(user: &str) -> std::io::Result<()> {
+    let base = Path::new("/home/")
+        .join(user)
+        .join("Maildir");
+
     for subdir in ["tmp", "new", "cur"] {
-        let dir = Path::new(
-            MAILDIR_ROOT
-                .get()
-                .expect("This will not fail as the cell gets populated in main"),
-        )
-        .join(maildir)
-        .join("Maildir")
-        .join(subdir);
+        let dir = base.join(subdir);
         if !dir.exists() {
-            warn!("maildir {} does not exist, creating...", maildir);
-            fs::create_dir_all(dir).await?;
+            warn!("Creating missing maildir subdir: {:?}", dir);
+            fs::create_dir_all(&dir).await?;
         }
     }
+
     Ok(())
 }
 
-pub async fn write_to_maildir(maildir: &Path, mail: &Vec<u8>) -> std::io::Result<()> {
-    let maildir = Path::new(
-        MAILDIR_ROOT
-            .get()
-            .expect("This will not fail as the cell gets populated in main"),
-    )
-    .join(maildir)
-    .join("Maildir");
-    let filename = generate_mail_filename("cwl");
+pub async fn write_to_maildir(user: &str, mail: &[u8]) -> std::io::Result<()> {
+    let maildir = Path::new("/home/")
+        .join(user)
+        .join("Maildir");
+
+    let filename = generate_mail_filename("local");
     let tmp_path = maildir.join("tmp").join(&filename);
     let new_path = maildir.join("new").join(&filename);
 
@@ -52,10 +48,12 @@ pub async fn write_to_maildir(maildir: &Path, mail: &Vec<u8>) -> std::io::Result
 
 fn generate_mail_filename(hostname: &str) -> String {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    let secs = now.as_secs();
-    let micros = now.subsec_micros();
-    let pid = process::id();
-    let unique = rand::random::<u64>();
-
-    format!("{}.M{}.P{}.Q{}.{}", secs, micros, pid, unique, hostname)
+    format!(
+        "{}.M{}.P{}.Q{}.{}",
+        now.as_secs(),
+        now.subsec_micros(),
+        process::id(),
+        rand::random::<u64>(),
+        hostname
+    )
 }
