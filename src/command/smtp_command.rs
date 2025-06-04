@@ -10,6 +10,7 @@ pub enum SmtpCommand {
     Quit,
     Vrfy(String),
     Starttls,
+    Auth(String),
     Unknown,
     DataEnd(Vec<u8>), // not an SMTP command, but a data passing object for handling mail delivery
 }
@@ -39,6 +40,8 @@ impl SmtpCommand {
             SmtpCommand::Vrfy(params)
         } else if string.starts_with("starttls") {
             SmtpCommand::Starttls
+        } else if string.starts_with("auth") {
+            SmtpCommand::Auth(params)
         } else {
             SmtpCommand::Unknown
         }

@@ -6,7 +6,7 @@ use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
-use crate::storage::maildir::{check_maildir, write_to_maildir, MAILDIR_ROOT};
+use crate::storage::maildir::{check_maildir, write_to_maildir, DOMAIN, MAILDIR_ROOT};
 
 pub struct DataEndHandler;
 
@@ -20,7 +20,7 @@ impl CommandHandler for DataEndHandler {
 
             for mailbox in mailboxes {
                 if let Some((mailbox, domain)) = mailbox.split_once("@") {
-                    if domain == "bozgi.space" {
+                    if domain == DOMAIN.get().expect("DOMAIN set in main") {
                         check_maildir(mailbox).await.unwrap();
                         write_to_maildir(Path::new(&mailbox), &body).await.unwrap();
                     } else {

@@ -12,4 +12,5 @@ mod vrfy_handler;
 pub mod registry;
 mod data_end_handler;
 mod starttls_handler;
+mod auth_handler;
 

@@ -2,11 +2,12 @@ mod command;
 mod io;
 mod storage;
 
+use std::{env, process};
 use std::path::Path;
 use tokio::net::TcpListener;
-use tracing::{error, info, Level};
+use tracing::{error, info, trace, Level};
 use io::transaction::SmtpTransaction;
-use crate::storage::maildir::MAILDIR_ROOT;
+use crate::storage::maildir::{DOMAIN, MAILDIR_ROOT};
 
 #[tokio::main]
 async fn main() {
@@ -17,7 +18,9 @@ async fn main() {
 
     info!("Patine prototype initializing...");
 
-    if !Path::new(MAILDIR_ROOT).exists() {
+    load_config();
+
+    if !Path::new(MAILDIR_ROOT.get().expect("Already set")).exists() {
         error!("Root for mail storage does not exist! Aborting...");
         return;
     }
@@ -33,5 +36,34 @@ async fn main() {
             let mut transaction = SmtpTransaction::new_server(socket);
             transaction.handle_connection().await;
         });
+    }
+}
+
+fn load_config() {
+    dotenv::dotenv().ok();
+
+    for (key, value) in env::vars() {
+        if key == "MAILDIR" {
+            MAILDIR_ROOT.set(value).expect("MAILDIR set only here");
+        } else if key == "DOMAIN" {
+            DOMAIN.set(value).expect("DOMAIN set here");
+        }
+    }
+
+    let mut error_flag = false;
+
+    if MAILDIR_ROOT.get().is_none() {
+        error!("MAILDIR_ROOT not set");
+        error_flag = true;
+    }
+
+    if DOMAIN.get().is_none() {
+        error!("DOMAIN not set");
+        error_flag = true;
+    }
+
+    if error_flag {
+        error!("Errors occured while loading config file, exiting...");
+        process::exit(1);
     }
 }

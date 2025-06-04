@@ -1,17 +1,26 @@
+use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::warn;
 
-pub const MAILDIR_ROOT: &str = "maildir";
+pub static MAILDIR_ROOT: OnceLock<String> = OnceLock::new();
+pub static DOMAIN: OnceLock<String> = OnceLock::new();
 
 pub async fn check_maildir(maildir: &str) -> std::io::Result<()> {
     for subdir in ["tmp", "new", "cur"] {
-        let dir = Path::new(MAILDIR_ROOT).join(maildir).join("Maildir").join(subdir);
+        let dir = Path::new(
+            MAILDIR_ROOT
+                .get()
+                .expect("This will not fail as the cell gets populated in main"),
+        )
+        .join(maildir)
+        .join("Maildir")
+        .join(subdir);
         if !dir.exists() {
             warn!("maildir {} does not exist, creating...", maildir);
             fs::create_dir_all(dir).await?;
@@ -21,7 +30,13 @@ pub async fn check_maildir(maildir: &str) -> std::io::Result<()> {
 }
 
 pub async fn write_to_maildir(maildir: &Path, mail: &Vec<u8>) -> std::io::Result<()> {
-    let maildir = Path::new(MAILDIR_ROOT).join(maildir).join("Maildir");
+    let maildir = Path::new(
+        MAILDIR_ROOT
+            .get()
+            .expect("This will not fail as the cell gets populated in main"),
+    )
+    .join(maildir)
+    .join("Maildir");
     let filename = generate_mail_filename("cwl");
     let tmp_path = maildir.join("tmp").join(&filename);
     let new_path = maildir.join("new").join(&filename);
