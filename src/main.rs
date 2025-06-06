@@ -20,11 +20,6 @@ async fn main() {
 
     load_config();
 
-    if !Path::new(MAILDIR_ROOT.get().expect("Already set")).exists() {
-        error!("Root for mail storage does not exist! Aborting...");
-        return;
-    }
-
     let listener = TcpListener::bind("127.0.0.1:4450").await.unwrap();
 
     info!("Patine prototype running on port 4450");

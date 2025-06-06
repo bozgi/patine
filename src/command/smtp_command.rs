@@ -17,8 +17,8 @@ pub enum SmtpCommand {
 
 impl SmtpCommand {
     pub fn from(string: String) -> Self {
-        let string = string.to_lowercase();
         let params = string.get(4..).unwrap_or("").trim().to_string();
+        let string = string.to_lowercase();
 
         if string.starts_with("ehlo") {
             SmtpCommand::Ehlo(params)
@@ -58,6 +58,7 @@ impl SmtpCommand {
             SmtpCommand::Noop => Some("noop"),
             SmtpCommand::Quit => Some("quit"),
             SmtpCommand::Vrfy(_) => Some("vrfy"),
+            SmtpCommand::Auth(_) => Some("auth"),
             SmtpCommand::Starttls => Some("starttls"),
             SmtpCommand::DataEnd(_) => Some("data_end"),
             _ => None,

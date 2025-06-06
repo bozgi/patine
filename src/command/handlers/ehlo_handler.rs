@@ -3,6 +3,7 @@ use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
+use crate::io::transaction_type::TransactionType;
 
 pub struct EhloHandler;
 
@@ -19,12 +20,20 @@ impl CommandHandler for EhloHandler {
                 SmtpState::Connected => {
                     txn.state = SmtpState::Greeted;
                     txn.esmtp = true;
-                    txn.send_multiline(250, vec![
-                        "SIZE 35882577".to_string(),
-                        "STARTTLS".to_string(),
-                        "8BITMIME".to_string(),
-                        "SMTPUTF8".to_string()
-                    ]).await;
+                    
+                    let mut response = Vec::with_capacity(7);
+                    response.push("Welcome!".to_string());
+                    response.push("SIZE 35882577".to_string());
+                    response.push("8BITMIME".to_string());
+                    response.push("SMTPUTF8".to_string());
+                    
+                    if txn.tls {
+                        response.push("AUTH PLAIN".to_string());
+                    } else {
+                        response.push("STARTTLS".to_string());
+                    }
+
+                    txn.send_multiline(250, response).await;
                 }
                 _ => txn.send_line(503, String::from("Bad sequence of commands")).await
             }
@@ -32,4 +41,8 @@ impl CommandHandler for EhloHandler {
             txn.send_line(554, String::from("Unknown error")).await;
         }
     }
+}
+
+fn handle_client(txn: &mut SmtpTransaction) {
+    
 }

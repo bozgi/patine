@@ -3,6 +3,7 @@ pub mod smtp_response;
 pub mod codec_state;
 pub mod smtp_state;
 pub mod transaction;
-pub mod smtp_client_codec;
+pub mod transaction_type;
 mod smtp_codec;
 mod tls;
+mod dns;

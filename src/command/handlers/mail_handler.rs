@@ -31,6 +31,11 @@ impl CommandHandler for MailHandler {
 
                 match txn.state {
                     SmtpState::Greeted => {
+                        if !txn.authenticated {
+                            txn.send_line(530, "Authentication Required.".into()).await;
+                            return;
+                        }
+                        
                         txn.state = SmtpState::Mailing;
                         txn.to = Some(Vec::with_capacity(1));
                         txn.from = Some(address.to_string());

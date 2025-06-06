@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use once_cell::sync::Lazy;
 use crate::command::command_handler::CommandHandler;
+use crate::command::handlers::auth_handler::AuthHandler;
 use crate::command::handlers::data_end_handler::DataEndHandler;
 use crate::command::handlers::data_handler::DataHandler;
 use crate::command::handlers::ehlo_handler::EhloHandler;
@@ -25,6 +26,7 @@ pub static HANDLERS: Lazy<HashMap<&'static str, Arc<dyn CommandHandler + Send + 
     handlers.insert("rcpt", Arc::new(RcptHandler));
     handlers.insert("rset", Arc::new(RsetHandler));
     handlers.insert("vrfy", Arc::new(VrfyHandler));
+    handlers.insert("auth", Arc::new(AuthHandler));
     handlers.insert("data_end", Arc::new(DataEndHandler));
     handlers.insert("starttls", Arc::new(StarttlsHandler));
     handlers
