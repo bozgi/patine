@@ -9,7 +9,7 @@ pub struct SmtpCodec<I, O> {
 impl<I, O> SmtpCodec<I, O> {
     pub(crate) fn new() -> Self {
         Self {
-            codec_state: CodecState::Regular,
+            codec_state: CodecState::Regular { buffer: None },
             marker: PhantomData,
         }
     }

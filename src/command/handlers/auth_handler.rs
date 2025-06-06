@@ -10,12 +10,16 @@ use base64::prelude::BASE64_STANDARD;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::trace;
+use crate::io::smtp_response::SmtpResponse;
 
 pub struct AuthHandler;
 
 #[async_trait]
 impl CommandHandler for AuthHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
+    type In = SmtpCommand;
+    type Out = SmtpResponse;
+
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand) {
         if let SmtpCommand::Auth(data) = command {
             if !txn.tls {
                 txn.send_line(530, "Must issue a STARTTLS command first".to_string()).await;

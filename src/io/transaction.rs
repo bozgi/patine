@@ -1,5 +1,4 @@
 use crate::command::smtp_command::SmtpCommand;
-use crate::io::smtp_server_codec::SmtpServerCodec;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use futures::{SinkExt, StreamExt};
@@ -30,7 +29,20 @@ pub struct SmtpTransaction<I, O> {
 }
 
 impl SmtpTransaction<SmtpCommand, SmtpResponse> {
-    pub fn new(tcp_stream: TcpStream) -> SmtpTransaction<SmtpCommand, SmtpResponse> {
+    pub fn new_server(tcp_stream: TcpStream) -> SmtpTransaction<SmtpCommand, SmtpResponse> {
+        Self {
+            tls: false,
+            esmtp: false,
+            authenticated: true,
+            state: SmtpState::Connected,
+            from: None,
+            to: None,
+            transaction_type: TransactionType::SERVER,
+            framed: Framed::new(Box::new(tcp_stream), SmtpCodec::new()),
+        }
+    }
+
+    pub fn new_submission(tcp_stream: TcpStream) -> SmtpTransaction<SmtpCommand, SmtpResponse> {
         Self {
             tls: false,
             esmtp: false,
@@ -38,7 +50,7 @@ impl SmtpTransaction<SmtpCommand, SmtpResponse> {
             state: SmtpState::Connected,
             from: None,
             to: None,
-            transaction_type: TransactionType::SERVER,
+            transaction_type: TransactionType::SUBMISSION,
             framed: Framed::new(Box::new(tcp_stream), SmtpCodec::new()),
         }
     }
@@ -85,19 +97,59 @@ impl SmtpTransaction<SmtpCommand, SmtpResponse> {
                 let tcp_stream = old_framed.into_inner();
                 let tls_stream = ACCEPTOR.accept(tcp_stream).await.unwrap();
 
-                self.framed = Framed::new(Box::new(tls_stream), SmtpServerCodec::new());
+                self.framed = Framed::new(Box::new(tls_stream), SmtpCodec::new());
                 self.tls = true;
                 self.state = SmtpState::Connected;
                 self.from = None;
                 self.to = None;
             }
-            TransactionType::CLIENT => {
+            _ => { panic!("Unsupported transaction type received") }
+        }
+    }
+}
 
+impl SmtpTransaction<SmtpResponse, SmtpCommand> {
+    pub fn new_client(tcp_stream: TcpStream) -> SmtpTransaction<SmtpResponse, SmtpCommand> {
+        Self {
+            tls: false,
+            esmtp: false,
+            authenticated: false,
+            state: SmtpState::Connected,
+            from: None,
+            to: None,
+            transaction_type: TransactionType::CLIENT,
+            framed: Framed::new(Box::new(tcp_stream), SmtpCodec::new()),
+        }
+    }
 
+    pub async fn handle_connection(&mut self) {
+        self.send(SmtpCommand::Mail("")).await?;
 
+        self.expect_response(250).await?;
 
-                // resolver.mx_lookup()
+        for recipient in self.to {
+            self.send(SmtpCommand::Rcpt("")).await?;
+            self.expect_response(250).await?;
+        }
+
+        self.send(SmtpCommand::Data).await.unwrap();
+        self.expect_response(354).await?;
+
+        self.send(SmtpCommand::DataEnd(vec![])).await?; // todo: fix here
+        self.expect_response(250).await?;
+
+        Ok(())
+    }
+
+    async fn expect_response(&mut self, expected_code: u16) -> Result<(), Self::Error> {
+        if let Some(SmtpResponse::SingleLine(code, msg)) = self.next().await {
+            if code == expected_code {
+                Ok(())
+            } else {
+                Err("")
             }
+        } else {
+            Err("")
         }
     }
 }

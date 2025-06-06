@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
+use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 use crate::io::transaction_type::TransactionType;
@@ -9,7 +10,10 @@ pub struct EhloHandler;
 
 #[async_trait]
 impl CommandHandler for EhloHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
+    type In = SmtpCommand;
+    type Out = SmtpResponse;
+
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand) {
         if let SmtpCommand::Ehlo(domain) = command {
             if domain.trim().is_empty() {
                 txn.send_line(501, String::from("Invalid argument")).await;
@@ -41,8 +45,4 @@ impl CommandHandler for EhloHandler {
             txn.send_line(554, String::from("Unknown error")).await;
         }
     }
-}
-
-fn handle_client(txn: &mut SmtpTransaction) {
-    
 }

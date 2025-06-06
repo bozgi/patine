@@ -6,11 +6,11 @@ use tokio_rustls::rustls::{ClientConfig, RootCertStore, ServerConfig};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 pub static ACCEPTOR: Lazy<TlsAcceptor> = Lazy::new(|| {
-    let certs = CertificateDer::pem_file_iter("/etc/mailcerts/cert.pem")
+    let certs = CertificateDer::pem_file_iter("certs/cert.pem")
         .expect("Failed to load certs")
         .collect::<Result<Vec<_>, _>>()
         .expect("Failed to load certs");
-    let key = PrivateKeyDer::from_pem_file("/etc/mailcerts/cert.key.pem");
+    let key = PrivateKeyDer::from_pem_file("certs/cert.key.pem");
 
     let config = ServerConfig::builder()
         .with_no_client_auth()

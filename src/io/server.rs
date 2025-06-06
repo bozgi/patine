@@ -13,7 +13,7 @@ impl Decoder for SmtpCodec<SmtpCommand, SmtpResponse> {
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         trace!("Decoding SmtpCodec with the current size {:?}", src.len());
         match &self.codec_state {
-            CodecState::Regular => {
+            CodecState::Regular { buffer: _ } => {
                 if let Some(position) = src.windows(2).position(|window| window == b"\r\n") {
                     let line = src.split_to(position + 2);
                     let line = String::from_utf8_lossy(&line[..line.len() - 2]);
@@ -36,7 +36,7 @@ impl Decoder for SmtpCodec<SmtpCommand, SmtpResponse> {
                     let mail = src.split_to(position + 5);
                     let mail_bytes = mail[..mail.len() - 5].to_vec();
 
-                    self.codec_state = CodecState::Regular;
+                    self.codec_state = CodecState::Regular { buffer: None };
                     Ok(Some(SmtpCommand::DataEnd(mail_bytes)))
                 } else {
                     Ok(None)

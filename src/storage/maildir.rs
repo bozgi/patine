@@ -13,7 +13,7 @@ pub static DOMAIN: OnceLock<String> = OnceLock::new();
 
 
 pub async fn check_maildir(user: &str) -> std::io::Result<()> {
-    let base = Path::new("/home/")
+    let base = Path::new("maildir")
         .join(user)
         .join("Maildir");
 
@@ -29,7 +29,7 @@ pub async fn check_maildir(user: &str) -> std::io::Result<()> {
 }
 
 pub async fn write_to_maildir(user: &str, mail: &[u8]) -> std::io::Result<()> {
-    let maildir = Path::new("/home/")
+    let maildir = Path::new("maildir")
         .join(user)
         .join("Maildir");
 

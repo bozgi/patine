@@ -8,3 +8,4 @@ mod smtp_codec;
 mod tls;
 mod dns;
 mod server;
+mod client;
