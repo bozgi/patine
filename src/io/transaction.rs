@@ -11,13 +11,14 @@ use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tracing::trace;
 use crate::command::handlers::registry::HANDLERS;
+use crate::io::smtp_codec::SmtpCodec;
 use crate::io::tls::ACCEPTOR;
 use crate::io::transaction_type::TransactionType;
 
 trait AsyncIO: AsyncRead + AsyncWrite {}
 impl<T: AsyncRead + AsyncWrite + ?Sized> AsyncIO for T {}
 
-pub struct SmtpTransaction {
+pub struct SmtpTransaction<I, O> {
     pub tls: bool,
     pub esmtp: bool,
     pub authenticated: bool,
@@ -25,11 +26,11 @@ pub struct SmtpTransaction {
     pub from: Option<String>,
     pub to: Option<Vec<String>>,
     pub transaction_type: TransactionType,
-    framed: Framed<Box<dyn AsyncIO + Unpin + Send>, SmtpServerCodec>,
+    framed: Framed<Box<dyn AsyncIO + Unpin + Send>, SmtpCodec<I, O>>,
 }
 
-impl SmtpTransaction {
-    pub fn new_server(tcp_stream: TcpStream) -> SmtpTransaction {
+impl SmtpTransaction<SmtpCommand, SmtpResponse> {
+    pub fn new(tcp_stream: TcpStream) -> SmtpTransaction<SmtpCommand, SmtpResponse> {
         Self {
             tls: false,
             esmtp: false,
@@ -38,33 +39,7 @@ impl SmtpTransaction {
             from: None,
             to: None,
             transaction_type: TransactionType::SERVER,
-            framed: Framed::new(Box::new(tcp_stream), SmtpServerCodec::new()),
-        }
-    }
-
-    pub fn new_submission(tcp_stream: TcpStream) -> SmtpTransaction {
-        Self {
-            tls: false,
-            esmtp: false,
-            authenticated: true,
-            state: SmtpState::Connected,
-            from: None,
-            to: None,
-            transaction_type: TransactionType::SUBMISSION,
-            framed: Framed::new(Box::new(tcp_stream), SmtpServerCodec::new()),
-        }
-    }
-
-    pub fn new_client(tcp_stream: TcpStream) -> SmtpTransaction {
-        Self {
-            tls: false,
-            esmtp: false,
-            authenticated: true,
-            state: SmtpState::Connected,
-            from: None,
-            to: None,
-            transaction_type: TransactionType::CLIENT,
-            framed: Framed::new(Box::new(tcp_stream), SmtpServerCodec::new()),
+            framed: Framed::new(Box::new(tcp_stream), SmtpCodec::new()),
         }
     }
 
@@ -104,7 +79,7 @@ impl SmtpTransaction {
             TransactionType::SERVER | TransactionType::SUBMISSION => {
                 let old_framed = std::mem::replace(
                     &mut self.framed,
-                    Framed::new(Box::new(tokio::io::empty()), SmtpServerCodec::new()),
+                    Framed::new(Box::new(tokio::io::empty()), SmtpCodec::new()),
                 );
 
                 let tcp_stream = old_framed.into_inner();
@@ -117,16 +92,12 @@ impl SmtpTransaction {
                 self.to = None;
             }
             TransactionType::CLIENT => {
-                
-                
-                
-                
+
+
+
+
                 // resolver.mx_lookup()
             }
         }
-    }
-    
-    pub async fn sendmail(&mut self) {
-        
     }
 }

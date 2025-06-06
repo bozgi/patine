@@ -4,5 +4,7 @@ use crate::io::transaction::SmtpTransaction;
 
 #[async_trait]
 pub trait CommandHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand);
+    type In;
+    type Out;
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand);
 }

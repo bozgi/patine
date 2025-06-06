@@ -7,3 +7,4 @@ pub mod transaction_type;
 mod smtp_codec;
 mod tls;
 mod dns;
+mod server;
