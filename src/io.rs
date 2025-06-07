@@ -1,4 +1,3 @@
-pub mod smtp_server_codec;
 pub mod smtp_response;
 pub mod codec_state;
 pub mod smtp_state;

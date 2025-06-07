@@ -44,10 +44,10 @@ impl Decoder for SmtpCodec<SmtpResponse, SmtpCommand> {
                     src.advance(total_consumed);
                     let code = code.unwrap();
 
-                    if lines.len() == 1 {
-                        return Ok(Some(SmtpResponse::SingleLine(code, lines.remove(0))));
+                    return if lines.len() == 1 {
+                        Ok(Some(SmtpResponse::SingleLine(code, lines.remove(0))))
                     } else {
-                        return Ok(Some(SmtpResponse::Multiline(code, lines)));
+                        Ok(Some(SmtpResponse::Multiline(code, lines)))
                     }
                 } else if sep != b'-' {
                     return Err(Error::new(

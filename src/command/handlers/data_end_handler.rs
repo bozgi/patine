@@ -1,4 +1,3 @@
-use std::fmt::format;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
@@ -6,6 +5,9 @@ use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 use crate::storage::maildir::{DOMAIN, check_maildir, write_to_maildir};
 use async_trait::async_trait;
+use std::fmt::format;
+use tokio::spawn;
+use tokio::task::spawn_blocking;
 use tracing::{error, warn};
 
 pub struct DataEndHandler;
@@ -23,25 +25,33 @@ impl CommandHandler for DataEndHandler {
 
             for mailbox in mailboxes {
                 if let Some((mailbox, domain)) = mailbox.split_once("@") {
-                    if domain == DOMAIN.get().expect("DOMAIN set in main") {
+                    if domain == DOMAIN.get().unwrap() {
                         check_maildir(mailbox).await.unwrap();
                         write_to_maildir(mailbox, &body).await.unwrap();
                     } else {
-                        let transaction = SmtpTransaction::new_client_from_submission(
-                            domain.to_string(),
-                            txn.from.clone().unwrap(),
-                            format!("{}@{}", mailbox, domain)
-                        )
-                        .await;
-                        if let Err(e) = transaction {
-                            warn!("Failed to create SMTP transaction: {}", e);
-                            continue;
-                        }
+                        let from = txn.from.clone().unwrap();
+                        let to = format!("{}@{}", mailbox, domain);
+                        let body_clone = body.clone();
 
-                        let mut transaction = transaction.unwrap();
-                        let cloned = body.clone();
-                        tokio::spawn(async move {
-                            transaction.handle_connection(cloned).await.unwrap();
+                        spawn(async move {
+                            let transaction = SmtpTransaction::new_client_from_submission(
+                                domain.to_string(),
+                                from,
+                                to,
+                            )
+                            .await;
+
+                            match transaction {
+                                Ok(mut transaction) => {
+                                    if let Err(e) = transaction.handle_connection(body_clone).await
+                                    {
+                                        warn!("Relay error: {}", e);
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!("Failed to create SMTP transaction: {}", e);
+                                }
+                            }
                         });
                     }
                 }
