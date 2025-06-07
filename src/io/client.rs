@@ -1,57 +1,66 @@
-use std::io::{Error, ErrorKind, Read};
-use bytes::{BufMut, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
 use crate::command::smtp_command::SmtpCommand;
-use crate::io::codec_state::CodecState;
 use crate::io::smtp_codec::SmtpCodec;
 use crate::io::smtp_response::SmtpResponse;
+use bytes::{Buf, BufMut, BytesMut};
+use std::io::{Error, ErrorKind};
+use tokio_util::codec::{Decoder, Encoder};
 
 impl Decoder for SmtpCodec<SmtpResponse, SmtpCommand> {
     type Item = SmtpResponse;
     type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let crlf_pos = src.windows(2).position(|w| w == b"\r\n");
-        if crlf_pos.is_none() {
-            return Ok(None);
-        }
+        let mut lines = Vec::new();
+        let mut total_consumed = 0;
+        let mut code: Option<u16> = None;
 
-        let pos = crlf_pos.unwrap();
-        let line = src.split_to(pos + 2);
-        let line_str = std::str::from_utf8(&line[..line.len() - 2])
-            .map_err(|_| Error::new(ErrorKind::InvalidData, "Invalid UTF-8"))?
-            .to_string();
+        loop {
+            if let Some(pos) = src[total_consumed..].windows(2).position(|w| w == b"\r\n") {
+                let line_end = total_consumed + pos;
+                let line = src[total_consumed..line_end].to_vec();
+                total_consumed = line_end + 2;
 
-        if line_str.len() < 4 {
-            return Err(Error::new(ErrorKind::InvalidData, "Short line"));
-        }
+                let line_str = String::from_utf8_lossy(&line);
 
-        let code: u16 = line_str[0..3].parse()
-            .map_err(|_| Error::new(ErrorKind::InvalidData, "Invalid response code"))?;
-        let is_last = &line_str[3..4] == " ";
+                let this_code = line_str[0..3].parse::<u16>().map_err(|_| {
+                    Error::new(ErrorKind::InvalidData, "Invalid status code")
+                })?;
 
-        let message = line_str[4..].trim_start().to_string();
+                let sep = line_str.as_bytes()[3];
+                let message = line_str[4..].to_string();
 
-        match &mut self.codec_state {
-            CodecState::Regular { buffer: Some(buffer) } => {
-                if is_last && buffer.is_empty() {
-                    Ok(Some(SmtpResponse::SingleLine(code, message)))
-                } else if is_last {
-                    buffer.push(message);
-                    let lines = std::mem::take(buffer);
-                    Ok(Some(SmtpResponse::Multiline(code, lines)))
-                } else {
-                    buffer.push(message);
-                    Ok(None)
+                if code.is_none() {
+                    code = Some(this_code);
+                } else if code != Some(this_code) {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Inconsistent multiline status codes",
+                    ));
                 }
-            }
-            CodecState::Data => {
-                Err(Error::new(ErrorKind::InvalidData, "Unexpected response during DATA state"))
-            }
-            _ => {
-                Ok(None)
+
+                lines.push(message);
+
+                if sep == b' ' {
+                    src.advance(total_consumed);
+                    let code = code.unwrap();
+
+                    if lines.len() == 1 {
+                        return Ok(Some(SmtpResponse::SingleLine(code, lines.remove(0))));
+                    } else {
+                        return Ok(Some(SmtpResponse::Multiline(code, lines)));
+                    }
+                } else if sep != b'-' {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "Malformed response separator",
+                    ));
+                }
+            } else {
+                break;
             }
         }
+
+        Ok(None)
     }
 }
 
@@ -75,6 +84,7 @@ impl Encoder<SmtpCommand> for SmtpCodec<SmtpResponse, SmtpCommand> {
             Auth(auth_type) => format!("AUTH {}\r\n", auth_type),
             DataEnd(content) => {
                 dst.extend_from_slice(&content);
+                dst.extend_from_slice(b"\r\n.\r\n");
 
                 return Ok(())
             },

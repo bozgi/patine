@@ -2,12 +2,18 @@ mod command;
 mod io;
 mod storage;
 
-use std::{env, process};
-use std::path::Path;
-use tokio::net::TcpListener;
-use tracing::{error, info, trace, Level};
-use io::transaction::SmtpTransaction;
+use crate::io::transaction_type::TransactionType::SUBMISSION;
 use crate::storage::maildir::{DOMAIN, MAILDIR_ROOT};
+use io::transaction::SmtpTransaction;
+use std::cell::OnceCell;
+use std::path::Path;
+use std::sync::OnceLock;
+use std::{env, process};
+use tokio::net::TcpListener;
+use tracing::{Level, error, info, trace};
+
+static SUBMISSION_PORT: OnceLock<u16> = OnceLock::new();
+static RELAY_PORT: OnceLock<u16> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -20,28 +26,70 @@ async fn main() {
 
     load_config();
 
-    let listener = TcpListener::bind("127.0.0.1:4450").await.unwrap();
+    let submission_listener = TcpListener::bind(format!(
+        "0.0.0.0:{}",
+        SUBMISSION_PORT.get().expect("Value set below")
+    ))
+    .await
+    .unwrap();
+    let relay_listener = TcpListener::bind(format!(
+        "0.0.0.0:{}",
+        RELAY_PORT.get().expect("Value set below")
+    ))
+    .await
+    .unwrap();
 
-    info!("Patine prototype running on port 4450");
+    info!(
+        "Patine prototype running ({}/submission + {}/relay)",
+        SUBMISSION_PORT.get().unwrap(),
+        RELAY_PORT.get().unwrap()
+    );
 
-    loop {
-        let (socket, addr) = listener.accept().await.unwrap();
-        tokio::spawn(async move {
-            info!("Accepted connection from {:?}", addr);
-            let mut transaction = SmtpTransaction::new_server(socket);
-            transaction.handle_connection().await;
-        });
-    }
+    let submission_task = tokio::spawn(async move {
+        loop {
+            let (socket, addr) = submission_listener.accept().await.unwrap();
+            tokio::spawn(async move {
+                info!("[SUBMISSION] Accepted connection from {:?}", addr);
+                let mut transaction = SmtpTransaction::new_submission(socket);
+                transaction.handle_connection().await;
+            });
+        }
+    });
+
+    let relay_task = tokio::spawn(async move {
+        loop {
+            let (socket, addr) = relay_listener.accept().await.unwrap();
+            tokio::spawn(async move {
+                info!("[RELAY] Accepted connection from {:?}", addr);
+                let mut transaction = SmtpTransaction::new_server(socket);
+                transaction.handle_connection().await;
+            });
+        }
+    });
+
+    let _ = tokio::join!(submission_task, relay_task);
 }
 
 fn load_config() {
     dotenv::dotenv().ok();
 
     for (key, value) in env::vars() {
-        if key == "MAILDIR" {
+        if key == "MAILDIR_ROOT" {
             MAILDIR_ROOT.set(value).expect("MAILDIR set only here");
         } else if key == "DOMAIN" {
-            DOMAIN.set(value).expect("DOMAIN set here");
+            DOMAIN.set(value).expect("DOMAIN set only here");
+        } else if key == "RELAY_PORT" {
+            RELAY_PORT
+                .set(value.parse::<u16>().expect("RELAY_PORT should be a number"))
+                .expect("RELAY_PORT set only here");
+        } else if key == "SUBMISSION_PORT" {
+            SUBMISSION_PORT
+                .set(
+                    value
+                        .parse::<u16>()
+                        .expect("SUBMISSION_PORT should be a number"),
+                )
+                .expect("SUBMISSION_PORT set only here");
         }
     }
 
@@ -54,6 +102,16 @@ fn load_config() {
 
     if DOMAIN.get().is_none() {
         error!("DOMAIN not set");
+        error_flag = true;
+    }
+
+    if SUBMISSION_PORT.get().is_none() {
+        error!("SUBMISSION_PORT not set");
+        error_flag = true;
+    }
+
+    if RELAY_PORT.get().is_none() {
+        error!("RELAY_PORT not set");
         error_flag = true;
     }
 

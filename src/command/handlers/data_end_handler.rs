@@ -1,13 +1,12 @@
-use std::path::{Path, PathBuf};
-use std::ptr::write;
-use async_trait::async_trait;
-use tracing_subscriber::fmt::format::Format;
+use std::fmt::format;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
-use crate::storage::maildir::{check_maildir, write_to_maildir, DOMAIN, MAILDIR_ROOT};
+use crate::storage::maildir::{DOMAIN, check_maildir, write_to_maildir};
+use async_trait::async_trait;
+use tracing::{error, warn};
 
 pub struct DataEndHandler;
 
@@ -28,14 +27,29 @@ impl CommandHandler for DataEndHandler {
                         check_maildir(mailbox).await.unwrap();
                         write_to_maildir(mailbox, &body).await.unwrap();
                     } else {
-                        unimplemented!("Forwarding is not implemented yet!");
-                    }
+                        let transaction = SmtpTransaction::new_client_from_submission(
+                            domain.to_string(),
+                            txn.from.clone().unwrap(),
+                            format!("{}@{}", mailbox, domain)
+                        )
+                        .await;
+                        if let Err(e) = transaction {
+                            warn!("Failed to create SMTP transaction: {}", e);
+                            continue;
+                        }
 
-                    txn.state = SmtpState::Greeted;
-                    txn.from = None;
-                    txn.to = None;
+                        let mut transaction = transaction.unwrap();
+                        let cloned = body.clone();
+                        tokio::spawn(async move {
+                            transaction.handle_connection(cloned).await.unwrap();
+                        });
+                    }
                 }
             }
+
+            txn.state = SmtpState::Greeted;
+            txn.from = None;
+            txn.to = None;
 
             txn.send_line(250, "OK: queued".to_string()).await;
         }

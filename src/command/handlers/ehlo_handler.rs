@@ -1,9 +1,9 @@
-use async_trait::async_trait;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
+use async_trait::async_trait;
 use crate::io::transaction_type::TransactionType;
 
 pub struct EhloHandler;
@@ -32,7 +32,9 @@ impl CommandHandler for EhloHandler {
                     response.push("SMTPUTF8".to_string());
                     
                     if txn.tls {
-                        response.push("AUTH PLAIN".to_string());
+                        if txn.transaction_type == TransactionType::SUBMISSION {
+                            response.push("AUTH PLAIN".to_string());
+                        }
                     } else {
                         response.push("STARTTLS".to_string());
                     }

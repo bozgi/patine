@@ -1,14 +1,10 @@
-use std::ffi::CString;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 use async_trait::async_trait;
-use std::process::Stdio;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
 use tracing::trace;
 use crate::io::smtp_response::SmtpResponse;
 
