@@ -1,10 +1,12 @@
-use async_trait::async_trait;
-use regex::Regex;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
+use crate::io::transaction_type::TransactionType;
+use crate::storage::maildir::DOMAIN;
+use async_trait::async_trait;
+use regex::Regex;
 
 pub struct RcptHandler;
 
@@ -18,7 +20,8 @@ impl CommandHandler for RcptHandler {
             let arg = arg.trim();
 
             if !arg.to_uppercase().starts_with("TO:") {
-                txn.send_line(501, "Syntax error in parameters or arguments".into()).await;
+                txn.send_line(501, "Syntax error in parameters or arguments".into())
+                    .await;
                 return;
             }
 
@@ -36,7 +39,15 @@ impl CommandHandler for RcptHandler {
                 match txn.state {
                     SmtpState::Mailing | SmtpState::Addressing => {
                         txn.state = SmtpState::Addressing;
-                        txn.to.as_mut().expect("State guarantees the existence of Vec here")
+                        let domain = address[address.chars().position(|c| c == '@').unwrap()..].trim();
+                        if txn.transaction_type == TransactionType::SERVER && domain != DOMAIN.get().unwrap() {
+                            txn.send_line(550, "Cannot relay".to_string()).await;
+                            return;
+                        }
+
+                        txn.to
+                            .as_mut()
+                            .expect("State guarantees the existence of Vec here")
                             .push(address.to_string());
                         txn.send_line(250, "Sender OK".into()).await;
                     }
