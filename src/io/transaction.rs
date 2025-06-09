@@ -175,7 +175,10 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         self.expect_response(220).await?;
 
         self.framed.send(SmtpCommand::Ehlo(DOMAIN.get().unwrap().clone())).await?;
-        self.expect_response(250).await?;
+        if self.is_tls(self.expect_response(250).await?) {
+            self.framed.send(SmtpCommand::Starttls).await?;
+            self.expect_response(220).await?;
+        }
 
         self.framed
             .send(SmtpCommand::Mail(self.from.clone().unwrap()))
@@ -203,19 +206,19 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         Ok(())
     }
 
-    async fn expect_response(&mut self, expected_code: u16) -> Result<(), Error> {
+    async fn expect_response(&mut self, expected_code: u16) -> Result<SmtpResponse, Error> {
         while let Some(result) = self.framed.next().await {
             return match result {
                 Ok(SmtpResponse::SingleLine(code, msg)) => {
                     if code == expected_code {
-                        Ok(())
+                        Ok(SmtpResponse::SingleLine(code, msg))
                     } else {
                         Err(Error::new(ErrorKind::InvalidData, msg))
                     }
                 }
                 Ok(SmtpResponse::Multiline(code, lines)) => {
                     if code == expected_code {
-                        Ok(())
+                        Ok(SmtpResponse::Multiline(code, lines))
                     } else {
                         Err(Error::new(ErrorKind::InvalidData, lines.join("; ")))
                     }
@@ -226,4 +229,19 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
 
         Err(Error::new(ErrorKind::UnexpectedEof, "Connection closed unexpectedly"))
     }
+
+    fn is_tls(&self, smtp_response: SmtpResponse) -> bool {
+        match smtp_response {
+            SmtpResponse::SingleLine(_, _) => {
+                false
+            }
+            SmtpResponse::Multiline(_, lines) => {
+                if lines.contains(&"STARTTLS".to_string()) {
+                    return true
+                }
+                false
+            }
+        }
+    }
+
 }
