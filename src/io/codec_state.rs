@@ -1,6 +1,4 @@
 pub enum CodecState {
-    Regular {
-        buffer: Option<Vec<String>>,
-    },
+    Regular,
     Data,
 }

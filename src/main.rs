@@ -2,15 +2,12 @@ mod command;
 mod io;
 mod storage;
 
-use crate::io::transaction_type::TransactionType::SUBMISSION;
 use crate::storage::maildir::{DOMAIN, MAILDIR_ROOT};
 use io::transaction::SmtpTransaction;
-use std::cell::OnceCell;
-use std::path::Path;
 use std::sync::OnceLock;
 use std::{env, process};
 use tokio::net::TcpListener;
-use tracing::{Level, error, info, trace};
+use tracing::{Level, error, info};
 
 static SUBMISSION_PORT: OnceLock<u16> = OnceLock::new();
 static RELAY_PORT: OnceLock<u16> = OnceLock::new();

@@ -3,12 +3,10 @@ use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
-use crate::storage::maildir::{DOMAIN, check_maildir, write_to_maildir};
+use crate::storage::maildir::{check_maildir, write_to_maildir, DOMAIN};
 use async_trait::async_trait;
-use std::fmt::format;
 use tokio::spawn;
-use tokio::task::spawn_blocking;
-use tracing::{error, warn};
+use tracing::warn;
 
 pub struct DataEndHandler;
 
@@ -24,13 +22,15 @@ impl CommandHandler for DataEndHandler {
             let mailboxes = txn.to.take().unwrap();
 
             for mailbox in mailboxes {
-                if let Some((mailbox, domain)) = mailbox.split_once("@") {
-                    if domain == DOMAIN.get().unwrap() {
-                        check_maildir(mailbox).await.unwrap();
-                        write_to_maildir(mailbox, &body).await.unwrap();
+                if let Some((user, domain)) = mailbox.split_once("@") {
+                    let user = user.to_owned();
+                    let domain = domain.to_owned();
+                    if &domain == DOMAIN.get().unwrap() {
+                        check_maildir(&user).await.unwrap();
+                        write_to_maildir(&user, &body).await.unwrap();
                     } else {
                         let from = txn.from.clone().unwrap();
-                        let to = format!("{}@{}", mailbox, domain);
+                        let to = format!("{}@{}", user, domain);
                         let body_clone = body.clone();
 
                         spawn(async move {
@@ -51,7 +51,7 @@ impl CommandHandler for DataEndHandler {
                                 Err(e) => {
                                     warn!("Failed to create SMTP transaction: {}", e);
                                 }
-                            }
+                            };
                         });
                     }
                 }

@@ -4,18 +4,15 @@ use crate::io::dns::RESOLVER;
 use crate::io::smtp_codec::SmtpCodec;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
-use crate::io::tls::{ACCEPTOR, CONNECTOR};
+use crate::io::tls::{ACCEPTOR};
 use crate::io::transaction_type::TransactionType;
 use futures::{SinkExt, StreamExt};
-use hickory_resolver::Resolver;
-use hickory_resolver::config::ResolverConfig;
-use hickory_resolver::name_server::TokioConnectionProvider;
 use std::io::{Error, ErrorKind};
 use std::net::ToSocketAddrs;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
-use tracing::{debug, trace, warn};
+use tracing::{trace, warn};
 use crate::command::smtp_command::SmtpCommand::Quit;
 use crate::storage::maildir::DOMAIN;
 
@@ -175,7 +172,8 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         self.expect_response(220).await?;
 
         self.framed.send(SmtpCommand::Ehlo(DOMAIN.get().unwrap().clone())).await?;
-        if self.is_tls(self.expect_response(250).await?) {
+        let ehlo_response = self.expect_response(250).await?;
+        if self.is_tls(ehlo_response) {
             self.framed.send(SmtpCommand::Starttls).await?;
             self.expect_response(220).await?;
         }
@@ -242,6 +240,10 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
                 false
             }
         }
+    }
+
+    fn starttls(&mut self) {
+
     }
 
 }
