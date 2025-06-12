@@ -4,13 +4,14 @@ use crate::io::dns::RESOLVER;
 use crate::io::smtp_codec::SmtpCodec;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
-use crate::io::tls::{ACCEPTOR};
+use crate::io::tls::{ACCEPTOR, CONNECTOR};
 use crate::io::transaction_type::TransactionType;
 use futures::{SinkExt, StreamExt};
 use std::io::{Error, ErrorKind};
 use std::net::ToSocketAddrs;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
+use tokio_rustls::rustls::pki_types::ServerName;
 use tokio_util::codec::Framed;
 use tracing::{trace, warn};
 use crate::command::smtp_command::SmtpCommand::Quit;
@@ -173,8 +174,10 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         self.framed.send(SmtpCommand::Ehlo(DOMAIN.get().unwrap().clone())).await?;
         let ehlo_response = self.expect_response(250).await?;
         if self.is_tls(ehlo_response) {
+            trace!("Detected TLS response");
             self.framed.send(SmtpCommand::Starttls).await?;
             self.expect_response(220).await?;
+            self.starttls().await?;
         }
 
         self.framed
@@ -241,7 +244,23 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         }
     }
 
-    fn starttls(&mut self) {
+    async fn starttls(&mut self) -> Result<(), Error> {
+        let old_framed = std::mem::replace(
+            &mut self.framed,
+            Framed::new(Box::new(tokio::io::empty()), SmtpCodec::new()),
+        );
 
+        let tcp_stream = old_framed.into_inner();
+        let split_email = self.to.as_ref().unwrap()[0].clone();
+        let domain_name = split_email.split("@").nth(1).unwrap().to_string();
+        let domain = ServerName::try_from(domain_name)
+            .map_err(|_| Error::new(ErrorKind::InvalidInput, "Invalid domain for TLS"))?;
+
+        let tls_stream = CONNECTOR.connect(domain, tcp_stream).await?;
+
+        self.framed = Framed::new(Box::new(tls_stream), SmtpCodec::new());
+        self.tls = true;
+
+        Ok(())
     }
 }
