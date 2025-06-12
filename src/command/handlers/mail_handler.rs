@@ -25,7 +25,7 @@ impl CommandHandler for MailHandler {
 
             let address = arg[5..].trim();
             trace!("address {}", address);
-            let address = address.strip_prefix('<').and_then(|s| s.strip_suffix('>'));
+            let address = extract_email(address);
             trace!("address now {:?}", address);
 
             let re = Regex::new(r"^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$").unwrap();
@@ -59,4 +59,10 @@ impl CommandHandler for MailHandler {
             txn.send_line(500, "Unknown error".into()).await;
         }
     }
+}
+
+fn extract_email(input: &str) -> Option<&str> {
+    let start = input.find('<')?;
+    let end = input[start..].find('>')?;
+    Some(&input[start+1..start+end])
 }
