@@ -8,7 +8,7 @@ use crate::io::tls::{ACCEPTOR, CONNECTOR};
 use crate::io::transaction_type::TransactionType;
 use futures::{SinkExt, StreamExt};
 use std::io::{Error, ErrorKind};
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::pki_types::ServerName;
@@ -130,18 +130,17 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
 
         for mx in mx_response.iter().map(|mx| mx.exchange().to_utf8()) {
             trace!("MX: {}", mx);
-            let socket_addrs = format!("{}:25", mx)
-                .to_socket_addrs()
-                .map_err(|e| Error::from(e))?;
 
-            for addr in socket_addrs {
+            let response = RESOLVER.lookup_ip(mx.clone()).await?;
+            for ip in response.iter() {
+                let addr = SocketAddr::new(ip, 25);
                 match TcpStream::connect(addr).await {
                     Ok(stream) => {
                         trace!("SmtpTransaction connected to {:?}", addr);
-                        let mut client = Self::new_client(stream);
-                        client.from = Some(from);
-                        client.to = Some(to);
-                        return Ok((client ));
+                        let mut client = Self::new_client(stream, mx);
+                        client.from = Some(from.clone());
+                        client.to = Some(to.clone());
+                        return Ok(client);
                     }
                     Err(e) => {
                         last_err = Some(Error::from(e));
@@ -155,7 +154,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         }))
     }
 
-    pub fn new_client(tcp_stream: TcpStream) -> SmtpTransaction<SmtpResponse, SmtpCommand> {
+    pub fn new_client(tcp_stream: TcpStream, exchange: String) -> SmtpTransaction<SmtpResponse, SmtpCommand> {
         Self {
             tls: false,
             esmtp: false,
@@ -163,7 +162,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
             state: SmtpState::Connected,
             from: None,
             to: None,
-            transaction_type: TransactionType::CLIENT,
+            transaction_type: TransactionType::CLIENT { exchange: Some(exchange) },
             framed: Framed::new(Box::new(tcp_stream), SmtpCodec::new()),
         }
     }
@@ -246,22 +245,25 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
     }
 
     async fn starttls(&mut self) -> Result<(), Error> {
-        let old_framed = std::mem::replace(
-            &mut self.framed,
-            Framed::new(Box::new(tokio::io::empty()), SmtpCodec::new()),
-        );
+        match &self.transaction_type {
+            TransactionType::CLIENT { exchange: Some(exchange) } => {
+                let old_framed = std::mem::replace(
+                    &mut self.framed,
+                    Framed::new(Box::new(tokio::io::empty()), SmtpCodec::new()),
+                );
 
-        let tcp_stream = old_framed.into_inner();
-        let split_email = self.to.as_ref().unwrap()[0].clone();
-        let domain_name = split_email.split("@").nth(1).unwrap().to_string();
-        let domain = ServerName::try_from(domain_name)
-            .map_err(|_| Error::new(ErrorKind::InvalidInput, "Invalid domain for TLS"))?;
+                let tcp_stream = old_framed.into_inner();
+                let domain = ServerName::try_from(exchange.clone())
+                    .map_err(|_| Error::new(ErrorKind::InvalidInput, "Invalid domain for TLS"))?;
 
-        let tls_stream = CONNECTOR.connect(domain, tcp_stream).await?;
+                let tls_stream = CONNECTOR.connect(domain, tcp_stream).await?;
 
-        self.framed = Framed::new(Box::new(tls_stream), SmtpCodec::new());
-        self.tls = true;
+                self.framed = Framed::new(Box::new(tls_stream), SmtpCodec::new());
+                self.tls = true;
 
-        Ok(())
+                Ok(())
+            }
+            _ => { Err(Error::new(ErrorKind::InvalidData, "Unknown transaction type")) }
+        }
     }
 }
