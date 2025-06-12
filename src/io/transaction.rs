@@ -130,8 +130,11 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
 
         for mx in mx_response.iter().map(|mx| mx.exchange().to_utf8()) {
             trace!("MX: {}", mx);
+            trace!("{:?}", mx);
 
-            let response = RESOLVER.lookup_ip(mx.clone()).await?;
+            let response = RESOLVER.lookup_ip(mx.clone())
+                .await
+                .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to resolve {}: {}", mx, e)))?;
             for ip in response.iter() {
                 let addr = SocketAddr::new(ip, 25);
                 match TcpStream::connect(addr).await {
