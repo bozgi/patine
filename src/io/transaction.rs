@@ -123,7 +123,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
     pub async fn new_client_from_submission(
         domain: String,
         from: String,
-        to: String,
+        to: Vec<String>,
     ) -> Result<SmtpTransaction<SmtpResponse, SmtpCommand>, Error> {
         let mx_response = RESOLVER.mx_lookup(&domain).await?;
         let mut last_err = None;
@@ -139,7 +139,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
                         trace!("SmtpTransaction connected to {:?}", addr);
                         let mut client = Self::new_client(stream);
                         client.from = Some(from);
-                        client.to = Some(vec![to]);
+                        client.to = Some(to);
                         return Ok(client);
                     }
                     Err(e) => {

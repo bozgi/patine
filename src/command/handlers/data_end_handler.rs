@@ -43,7 +43,31 @@ impl CommandHandler for DataEndHandler {
                         };
                     }
                 } else {
-                    todo!()
+                    let body_clone = body.clone();
+                    let from = txn.from.clone().unwrap();
+                    let mut to = Vec::new();
+                    for user in users {
+                        to.push(format!("{}@{}", user, domain));
+                    }
+
+                    spawn(async move {
+                        let transaction = SmtpTransaction::new_client_from_submission(
+                            domain.clone().to_string(),
+                            from,
+                            to,
+                        ).await;
+
+                        match transaction {
+                            Ok(mut transaction) => {
+                                if let Err(e) = transaction.handle_connection(body_clone).await {
+                                    warn!("Relay error: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to create SMTP transaction: {}", e);
+                            }
+                        };
+                    });
                 }
             }
 
