@@ -40,7 +40,7 @@ impl CommandHandler for RcptHandler {
                 match txn.state {
                     SmtpState::Mailing | SmtpState::Addressing => {
                         txn.state = SmtpState::Addressing;
-                        let domain = address[address.chars().position(|c| c == '@').unwrap()..].trim();
+                        let domain = address[address.chars().position(|c| c == '@').unwrap() + 1..].trim();
                         trace!("Domain: {}", domain);
                         if txn.transaction_type == TransactionType::SERVER && domain != DOMAIN.get().unwrap() {
                             txn.send_line(550, "Cannot relay".to_string()).await;
