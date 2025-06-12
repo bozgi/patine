@@ -128,7 +128,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         let mx_response = RESOLVER.mx_lookup(&domain).await?;
         let mut last_err = None;
 
-        for mx in mx_response.iter() { // todo: pass mx record
+        for mx in mx_response.iter().map(|mx| mx.exchange().to_utf8()) {
             trace!("MX: {}", mx);
             let socket_addrs = format!("{}:25", mx)
                 .to_socket_addrs()
@@ -141,7 +141,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
                         let mut client = Self::new_client(stream);
                         client.from = Some(from);
                         client.to = Some(to);
-                        return Ok(client);
+                        return Ok((client ));
                     }
                     Err(e) => {
                         last_err = Some(Error::from(e));
