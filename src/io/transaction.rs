@@ -1,22 +1,21 @@
 use crate::command::handlers::registry::HANDLERS;
 use crate::command::smtp_command::SmtpCommand;
+use crate::command::smtp_command::SmtpCommand::Quit;
+pub(crate) use crate::io::asyncio::AsyncIO;
 use crate::io::dns::RESOLVER;
 use crate::io::smtp_codec::SmtpCodec;
 use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::tls::{ACCEPTOR, CONNECTOR};
 use crate::io::transaction_type::TransactionType;
+use crate::storage::maildir::DOMAIN;
 use futures::{SinkExt, StreamExt};
 use std::io::{Error, ErrorKind};
-use std::net::{SocketAddr, ToSocketAddrs};
-use tokio::io::{AsyncRead, AsyncWrite};
+use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tokio_rustls::rustls::pki_types::ServerName;
 use tokio_util::codec::Framed;
 use tracing::{trace, warn};
-use crate::command::smtp_command::SmtpCommand::Quit;
-pub(crate) use crate::io::asyncio::AsyncIO;
-use crate::storage::maildir::DOMAIN;
 
 pub struct SmtpTransaction<I, O> {
     pub tls: bool,

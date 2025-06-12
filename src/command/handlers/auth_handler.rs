@@ -64,7 +64,7 @@ pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
     let mut auth = Authenticator::with_password(&"patine").unwrap();
     auth.get_handler().set_credentials(username, password);
-    if auth.authenticate().is_ok() && auth.open_session().is_ok() {
+    if auth.authenticate().is_ok() {
         return true
     }
     false
