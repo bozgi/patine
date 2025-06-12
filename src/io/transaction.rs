@@ -14,10 +14,8 @@ use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tracing::{trace, warn};
 use crate::command::smtp_command::SmtpCommand::Quit;
+pub(crate) use crate::io::asyncio::AsyncIO;
 use crate::storage::maildir::DOMAIN;
-
-trait AsyncIO: AsyncRead + AsyncWrite {}
-impl<T: AsyncRead + AsyncWrite + ?Sized> AsyncIO for T {}
 
 pub struct SmtpTransaction<I, O> {
     pub tls: bool,
@@ -168,6 +166,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         }
     }
 
+    // TODO: Add mail here as Vec<String>
     pub async fn handle_connection(&mut self, data: Vec<u8>) -> Result<(), Error> {
         self.expect_response(220).await?;
 
@@ -245,5 +244,4 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
     fn starttls(&mut self) {
 
     }
-
 }

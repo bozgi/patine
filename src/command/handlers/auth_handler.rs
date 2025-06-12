@@ -37,7 +37,6 @@ impl CommandHandler for AuthHandler {
                     }
                     let decoded = decoded.unwrap();
 
-
                     let parts: Vec<&[u8]> = decoded.split(|&b| b == 0).skip(1).collect();
 
                     let username = String::from_utf8(parts[0].to_vec()).unwrap();

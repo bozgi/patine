@@ -9,3 +9,4 @@ mod dns;
 mod server;
 mod client;
 mod delivery;
+mod asyncio;
