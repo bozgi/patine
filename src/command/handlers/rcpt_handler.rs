@@ -7,6 +7,7 @@ use crate::io::transaction_type::TransactionType;
 use crate::storage::maildir::DOMAIN;
 use async_trait::async_trait;
 use regex::Regex;
+use tracing::trace;
 
 pub struct RcptHandler;
 
@@ -40,6 +41,7 @@ impl CommandHandler for RcptHandler {
                     SmtpState::Mailing | SmtpState::Addressing => {
                         txn.state = SmtpState::Addressing;
                         let domain = address[address.chars().position(|c| c == '@').unwrap()..].trim();
+                        trace!("Domain: {}", domain);
                         if txn.transaction_type == TransactionType::SERVER && domain != DOMAIN.get().unwrap() {
                             txn.send_line(550, "Cannot relay".to_string()).await;
                             return;

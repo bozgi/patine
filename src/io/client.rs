@@ -4,6 +4,7 @@ use crate::io::smtp_response::SmtpResponse;
 use bytes::{Buf, BufMut, BytesMut};
 use std::io::{Error, ErrorKind};
 use tokio_util::codec::{Decoder, Encoder};
+use tracing::trace;
 
 impl Decoder for SmtpCodec<SmtpResponse, SmtpCommand> {
     type Item = SmtpResponse;
@@ -21,6 +22,7 @@ impl Decoder for SmtpCodec<SmtpResponse, SmtpCommand> {
                 total_consumed = line_end + 2;
 
                 let line_str = String::from_utf8_lossy(&line);
+                trace!("Line: {}", line_str);
 
                 let this_code = line_str[0..3].parse::<u16>().map_err(|_| {
                     Error::new(ErrorKind::InvalidData, "Invalid status code")
