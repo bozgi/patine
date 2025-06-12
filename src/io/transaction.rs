@@ -128,7 +128,8 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         let mx_response = RESOLVER.mx_lookup(&domain).await?;
         let mut last_err = None;
 
-        for mx in mx_response.iter().map(|mx| mx.exchange().to_utf8()) {
+        for mx in mx_response.iter() { // todo: pass mx record
+            trace!("MX: {}", mx);
             let socket_addrs = format!("{}:25", mx)
                 .to_socket_addrs()
                 .map_err(|e| Error::from(e))?;
