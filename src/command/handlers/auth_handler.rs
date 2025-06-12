@@ -5,6 +5,7 @@ use crate::io::transaction::SmtpTransaction;
 use async_trait::async_trait;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
+use pam::Authenticator;
 use tracing::trace;
 use crate::io::smtp_response::SmtpResponse;
 
@@ -61,8 +62,10 @@ impl CommandHandler for AuthHandler {
 
 pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
-    if username == "bob" && password == "hujgnuj" {
-        return true;
+    let mut auth = Authenticator::with_password(&"patine").unwrap();
+    auth.get_handler().set_credentials(username, password);
+    if auth.authenticate().is_ok() && auth.open_session().is_ok() {
+        return true
     }
     false
 }
