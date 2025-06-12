@@ -27,8 +27,6 @@ impl CommandHandler for EhloHandler {
                     
                     let mut response = Vec::with_capacity(7);
                     response.push("Welcome!".to_string());
-                    response.push("SIZE 35882577".to_string());
-                    response.push("8BITMIME".to_string());
                     response.push("SMTPUTF8".to_string());
                     
                     if txn.tls {
