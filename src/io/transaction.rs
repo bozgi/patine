@@ -183,6 +183,9 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
             self.starttls().await?;
         }
 
+        self.framed.send(SmtpCommand::Ehlo(DOMAIN.get().unwrap().clone())).await?;
+        self.expect_response(220).await?;
+
         self.framed
             .send(SmtpCommand::Mail(self.from.clone().unwrap()))
             .await?;
