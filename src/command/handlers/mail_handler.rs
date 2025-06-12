@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use regex::Regex;
+use tracing::trace;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_response::SmtpResponse;
@@ -23,7 +24,9 @@ impl CommandHandler for MailHandler {
             }
 
             let address = arg[5..].trim();
+            trace!("address {}", address);
             let address = address.strip_prefix('<').and_then(|s| s.strip_suffix('>'));
+            trace!("address now {:?}", address);
 
             let re = Regex::new(r"^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$").unwrap();
 
