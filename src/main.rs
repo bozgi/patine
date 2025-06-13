@@ -7,7 +7,7 @@ use io::transaction::SmtpTransaction;
 use std::sync::OnceLock;
 use std::{env, process};
 use tokio::net::TcpListener;
-use tracing::{Level, error, info};
+use tracing::{Level, error, info, debug};
 
 static SUBMISSION_PORT: OnceLock<u16> = OnceLock::new();
 static RELAY_PORT: OnceLock<u16> = OnceLock::new();
@@ -116,4 +116,10 @@ fn load_config() {
         error!("Errors occured while loading config file, exiting...");
         process::exit(1);
     }
+
+    info!("Loaded config file");
+    debug!("MAILDIR_ROOT={:#?}", MAILDIR_ROOT.get().unwrap());
+    debug!("DOMAIN_{:#?}", DOMAIN.get().unwrap());
+    debug!("SUBMISSION_PORT{:#?}", SUBMISSION_PORT.get().unwrap());
+    debug!("RELAY_PORT{:#?}", RELAY_PORT.get().unwrap());
 }
