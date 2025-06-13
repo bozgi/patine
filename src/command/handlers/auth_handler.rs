@@ -6,7 +6,6 @@ use crate::io::transaction::SmtpTransaction;
 use async_trait::async_trait;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use pam::Authenticator;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::{error, trace};
@@ -67,7 +66,7 @@ pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
 
     let mut child = Command::new("sudo")
-        .arg("pam_helper")
+        .arg("/home/bozgi/patine-test/pam_helper")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
