@@ -1,5 +1,4 @@
 use std::process::Stdio;
-use std::sync::OnceLock;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
@@ -11,6 +10,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tracing::{error, trace};
 use crate::io::smtp_response::SmtpResponse;
+use crate::storage::maildir::PAM_HELPER_PATH;
 
 pub struct AuthHandler;
 
@@ -68,7 +68,7 @@ pub async fn authenticate_user(username: String, password: String) -> bool {
 
     let mut child = Command::new("sudo")
         .arg("-n")
-        .arg(format!("{PAM_HELPER_PATH}/pam_helper"))
+        .arg(format!("{}/pam_helper", PAM_HELPER_PATH.get().unwrap()))
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
