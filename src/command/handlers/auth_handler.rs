@@ -1,3 +1,4 @@
+use std::process::Stdio;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
@@ -6,6 +7,7 @@ use async_trait::async_trait;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use pam::Authenticator;
+use tokio::process::Command;
 use tracing::trace;
 use crate::io::smtp_response::SmtpResponse;
 
@@ -62,10 +64,25 @@ impl CommandHandler for AuthHandler {
 
 pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
-    let mut auth = Authenticator::with_password(&"patine").unwrap();
-    auth.get_handler().set_credentials(username, password);
-    if auth.authenticate().is_ok() {
-        return true
+    let mut child = Command::new("sudo")
+        .arg("pam_helper")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Failed to run pam_helper");
+
+    {
+        let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+        writeln!(stdin, "{}", username).unwrap();
+        writeln!(stdin, "{}", password).unwrap();
     }
-    false
+
+    let status = child.wait().await.expect("Failed to wait on child");
+
+    if status.success() {
+        println!("Authentication successful");
+    } else {
+        println!("Authentication failed");
+    }
 }

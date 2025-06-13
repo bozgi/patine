@@ -119,7 +119,7 @@ fn load_config() {
 
     info!("Loaded config file");
     debug!("MAILDIR_ROOT={:#?}", MAILDIR_ROOT.get().unwrap());
-    debug!("DOMAIN_{:#?}", DOMAIN.get().unwrap());
-    debug!("SUBMISSION_PORT{:#?}", SUBMISSION_PORT.get().unwrap());
-    debug!("RELAY_PORT{:#?}", RELAY_PORT.get().unwrap());
+    debug!("DOMAIN={:#?}", DOMAIN.get().unwrap());
+    debug!("SUBMISSION_PORT={:#?}", SUBMISSION_PORT.get().unwrap());
+    debug!("RELAY_PORT={:#?}", RELAY_PORT.get().unwrap());
 }
