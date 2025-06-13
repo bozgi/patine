@@ -1,4 +1,5 @@
 use std::process::Stdio;
+use std::sync::OnceLock;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
@@ -66,7 +67,8 @@ pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
 
     let mut child = Command::new("sudo")
-        .arg("/home/bozgi/patine-test/pam_helper")
+        .arg("-n")
+        .arg(format!("{PAM_HELPER_PATH}/pam_helper"))
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -81,13 +83,7 @@ pub async fn authenticate_user(username: String, password: String) -> bool {
     }
 
     match child.wait().await {
-        Ok(status) => {
-            if status.success() {
-                true
-            } else {
-                false
-            }
-        },
+        Ok(status) => status.success(),
         Err(e) => {
             error!("Could not authenticate user, error {}", e);
             false

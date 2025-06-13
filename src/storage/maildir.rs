@@ -9,7 +9,7 @@ use tracing::warn;
 
 pub static MAILDIR_ROOT: OnceLock<String> = OnceLock::new();
 pub static DOMAIN: OnceLock<String> = OnceLock::new();
-
+pub static PAM_HELPER_PATH: OnceLock<String> = OnceLock::new();
 
 pub async fn check_maildir(user: &str) -> std::io::Result<()> {
     let base = Path::new(MAILDIR_ROOT.get().unwrap())

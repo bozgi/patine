@@ -2,7 +2,7 @@ mod command;
 mod io;
 mod storage;
 
-use crate::storage::maildir::{DOMAIN, MAILDIR_ROOT};
+use crate::storage::maildir::{DOMAIN, MAILDIR_ROOT, PAM_HELPER_PATH};
 use io::transaction::SmtpTransaction;
 use std::sync::OnceLock;
 use std::{env, process};
@@ -87,6 +87,10 @@ fn load_config() {
                         .expect("SUBMISSION_PORT should be a number"),
                 )
                 .expect("SUBMISSION_PORT set only here");
+        } else if key == "PAM_HELPER_PATH" {
+            PAM_HELPER_PATH
+                .set(value)
+                .expect("PAM_HELPER_PATH set only`")
         }
     }
 
@@ -112,6 +116,11 @@ fn load_config() {
         error_flag = true;
     }
 
+    if PAM_HELPER_PATH.get().is_none() {
+        error!("PAM_HELPER_PATH not set");
+        error_flag = true;
+    }
+
     if error_flag {
         error!("Errors occured while loading config file, exiting...");
         process::exit(1);
@@ -122,4 +131,5 @@ fn load_config() {
     debug!("DOMAIN={:#?}", DOMAIN.get().unwrap());
     debug!("SUBMISSION_PORT={:#?}", SUBMISSION_PORT.get().unwrap());
     debug!("RELAY_PORT={:#?}", RELAY_PORT.get().unwrap());
+    debug!("PAM_HELPER_PATH={:#?}", PAM_HELPER_PATH.get().unwrap());
 }
