@@ -1,5 +1,3 @@
-use crate::command::command_handler::CommandHandler;
-
 mod ehlo_handler;
 mod helo_handler;
 mod mail_handler;

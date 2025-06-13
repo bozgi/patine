@@ -2,5 +2,7 @@
 pub enum TransactionType {
     SERVER, 
     SUBMISSION,
-    CLIENT
+    CLIENT {
+        exchange: Option<String>,
+    }
 }

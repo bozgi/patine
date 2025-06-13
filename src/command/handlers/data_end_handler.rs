@@ -1,37 +1,79 @@
-use std::path::{Path, PathBuf};
-use std::ptr::write;
-use async_trait::async_trait;
-use tracing_subscriber::fmt::format::Format;
+use std::collections::HashMap;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
+use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
-use crate::storage::maildir::{check_maildir, write_to_maildir, DOMAIN, MAILDIR_ROOT};
+use crate::storage::maildir::{check_maildir, write_to_maildir, DOMAIN};
+use async_trait::async_trait;
+use tokio::spawn;
+use tracing::{error, warn};
 
 pub struct DataEndHandler;
 
 #[async_trait]
 impl CommandHandler for DataEndHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
+    type In = SmtpCommand;
+    type Out = SmtpResponse;
+
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand) {
         if let SmtpCommand::DataEnd(body) = command {
             tracing::info!("Received email");
 
             let mailboxes = txn.to.take().unwrap();
+            let mut domains: HashMap<String, Vec<String>> = HashMap::new();
 
             for mailbox in mailboxes {
-                if let Some((mailbox, domain)) = mailbox.split_once("@") {
-                    if domain == DOMAIN.get().expect("DOMAIN set in main") {
-                        check_maildir(mailbox).await.unwrap();
-                        write_to_maildir(mailbox, &body).await.unwrap();
-                    } else {
-                        unimplemented!("Forwarding is not implemented yet!");
-                    }
-
-                    txn.state = SmtpState::Greeted;
-                    txn.from = None;
-                    txn.to = None;
+                if let Some((user, domain)) = mailbox.split_once("@") {
+                    domains
+                        .entry(domain.to_string())
+                        .or_insert_with(Vec::new)
+                        .push(user.to_string());
                 }
             }
+
+            for (domain, users) in domains {
+                if &domain == DOMAIN.get().unwrap() {
+                    for user in users {
+                        if check_maildir(&user).await.is_err() {
+                            error!("Failed to check maildir for user {}", user);
+                        }
+                        if write_to_maildir(&user, &body).await.is_err() {
+                            error!("Failed to write to maildir for user {}", user);
+                        };
+                    }
+                } else {
+                    let body_clone = body.clone();
+                    let from = txn.from.clone().unwrap();
+                    let mut to = Vec::new();
+                    for user in users {
+                        to.push(format!("{}@{}", user, domain));
+                    }
+
+                    spawn(async move {
+                        let transaction = SmtpTransaction::new_client_from_submission(
+                            domain.clone().to_string(),
+                            from,
+                            to,
+                        ).await;
+
+                        match transaction {
+                            Ok(mut transaction) => {
+                                if let Err(e) = transaction.handle_connection(body_clone).await {
+                                    warn!("Relay error: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to create SMTP transaction: {}", e);
+                            }
+                        };
+                    });
+                }
+            }
+
+            txn.state = SmtpState::Greeted;
+            txn.from = None;
+            txn.to = None;
 
             txn.send_line(250, "OK: queued".to_string()).await;
         }

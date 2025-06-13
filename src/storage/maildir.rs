@@ -1,7 +1,6 @@
-use std::cell::OnceCell;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 use tokio::fs::File;
@@ -10,10 +9,10 @@ use tracing::warn;
 
 pub static MAILDIR_ROOT: OnceLock<String> = OnceLock::new();
 pub static DOMAIN: OnceLock<String> = OnceLock::new();
-
+pub static PAM_HELPER_PATH: OnceLock<String> = OnceLock::new();
 
 pub async fn check_maildir(user: &str) -> std::io::Result<()> {
-    let base = Path::new("/home/")
+    let base = Path::new(MAILDIR_ROOT.get().unwrap())
         .join(user)
         .join("Maildir");
 
@@ -29,7 +28,7 @@ pub async fn check_maildir(user: &str) -> std::io::Result<()> {
 }
 
 pub async fn write_to_maildir(user: &str, mail: &[u8]) -> std::io::Result<()> {
-    let maildir = Path::new("/home/")
+    let maildir = Path::new(MAILDIR_ROOT.get().unwrap())
         .join(user)
         .join("Maildir");
 

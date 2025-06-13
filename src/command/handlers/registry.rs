@@ -14,9 +14,13 @@ use crate::command::handlers::rcpt_handler::RcptHandler;
 use crate::command::handlers::rset_handler::RsetHandler;
 use crate::command::handlers::starttls_handler::StarttlsHandler;
 use crate::command::handlers::vrfy_handler::VrfyHandler;
+use crate::command::smtp_command::SmtpCommand;
+use crate::io::smtp_response::SmtpResponse;
 
-pub static HANDLERS: Lazy<HashMap<&'static str, Arc<dyn CommandHandler + Send + Sync>>> = Lazy::new(|| {
-    let mut handlers: HashMap<&'static str, Arc<dyn CommandHandler + Send + Sync>> = HashMap::new();
+type ArcDynCommandHandler = Arc<dyn CommandHandler<In = SmtpCommand, Out = SmtpResponse> + Send + Sync>;
+
+pub static HANDLERS: Lazy<HashMap<&'static str, ArcDynCommandHandler>> = Lazy::new(|| {
+    let mut handlers: HashMap<&'static str, ArcDynCommandHandler> = HashMap::new();
     handlers.insert("ehlo", Arc::new(EhloHandler));
     handlers.insert("helo", Arc::new(HeloHandler));
     handlers.insert("data", Arc::new(DataHandler));

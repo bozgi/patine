@@ -1,30 +1,18 @@
+use bytes::BytesMut;
+use tokio_util::codec::{Decoder, Encoder};
+use tracing::trace;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::codec_state::CodecState;
+use crate::io::smtp_codec::SmtpCodec;
 use crate::io::smtp_response::SmtpResponse;
-use bytes::{BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
-use tracing::{debug, trace};
-use crate::io::smtp_state::SmtpState;
 
-pub struct SmtpServerCodec {
-    state: CodecState
-}
-
-impl SmtpServerCodec {
-    pub fn new() -> SmtpServerCodec {
-        Self {
-            state: CodecState::Regular
-        }
-    }
-}
-
-impl Decoder for SmtpServerCodec {
+impl Decoder for SmtpCodec<SmtpCommand, SmtpResponse> {
     type Item = SmtpCommand;
     type Error = std::io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         trace!("Decoding SmtpCodec with the current size {:?}", src.len());
-        match &self.state {
+        match &self.codec_state {
             CodecState::Regular => {
                 if let Some(position) = src.windows(2).position(|window| window == b"\r\n") {
                     let line = src.split_to(position + 2);
@@ -35,7 +23,7 @@ impl Decoder for SmtpServerCodec {
                     trace!("Found command {:?}", command);
 
                     if let Some(SmtpCommand::Data) = &command {
-                        self.state = CodecState::Data;
+                        self.codec_state = CodecState::Data;
                     }
 
                     Ok(command)
@@ -48,7 +36,7 @@ impl Decoder for SmtpServerCodec {
                     let mail = src.split_to(position + 5);
                     let mail_bytes = mail[..mail.len() - 5].to_vec();
 
-                    self.state = CodecState::Regular;
+                    self.codec_state = CodecState::Regular;
                     Ok(Some(SmtpCommand::DataEnd(mail_bytes)))
                 } else {
                     Ok(None)
@@ -58,7 +46,7 @@ impl Decoder for SmtpServerCodec {
     }
 }
 
-impl Encoder<SmtpResponse> for SmtpServerCodec {
+impl Encoder<SmtpResponse> for SmtpCodec<SmtpCommand, SmtpResponse> {
     type Error = std::io::Error;
 
     fn encode(&mut self, item: SmtpResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {

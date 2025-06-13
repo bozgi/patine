@@ -1,21 +1,25 @@
-use std::ffi::CString;
+use std::process::Stdio;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 use async_trait::async_trait;
-use std::process::Stdio;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-use tracing::trace;
+use tracing::{error, trace};
+use crate::io::smtp_response::SmtpResponse;
+use crate::storage::maildir::PAM_HELPER_PATH;
 
 pub struct AuthHandler;
 
 #[async_trait]
 impl CommandHandler for AuthHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
+    type In = SmtpCommand;
+    type Out = SmtpResponse;
+
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand) {
         if let SmtpCommand::Auth(data) = command {
             if !txn.tls {
                 txn.send_line(530, "Must issue a STARTTLS command first".to_string()).await;
@@ -36,7 +40,6 @@ impl CommandHandler for AuthHandler {
                         return;
                     }
                     let decoded = decoded.unwrap();
-
 
                     let parts: Vec<&[u8]> = decoded.split(|&b| b == 0).skip(1).collect();
 
@@ -62,8 +65,28 @@ impl CommandHandler for AuthHandler {
 
 pub async fn authenticate_user(username: String, password: String) -> bool {
     trace!("{} {}", username, password);
-    if username == "bob" && password == "hujgnuj" {
-        return true;
+
+    let mut child = Command::new("sudo")
+        .arg("-n")
+        .arg(format!("{}/pam_helper", PAM_HELPER_PATH.get().unwrap()))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Failed to start pam_helper");
+
+    if let Some(mut stdin) = child.stdin.take() {
+        if stdin.write_all(format!("{}\n{}\n", username, password).as_bytes()).await.is_err() {
+            error!("Failed to write to pam_helper stdin");
+            return false;
+        }
     }
-    false
+
+    match child.wait().await {
+        Ok(status) => status.success(),
+        Err(e) => {
+            error!("Could not authenticate user, error {}", e);
+            false
+        },
+    }
 }

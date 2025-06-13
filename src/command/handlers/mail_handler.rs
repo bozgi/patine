@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use regex::Regex;
+use tracing::trace;
 use crate::command::command_handler::CommandHandler;
 use crate::command::smtp_command::SmtpCommand;
+use crate::io::smtp_response::SmtpResponse;
 use crate::io::smtp_state::SmtpState;
 use crate::io::transaction::SmtpTransaction;
 
@@ -9,7 +11,10 @@ pub struct MailHandler;
 
 #[async_trait]
 impl CommandHandler for MailHandler {
-    async fn handle(&self, txn: &mut SmtpTransaction, command: SmtpCommand) {
+    type In = SmtpCommand;
+    type Out = SmtpResponse;
+
+    async fn handle(&self, txn: &mut SmtpTransaction<Self::In, Self::Out>, command: SmtpCommand) {
         if let SmtpCommand::Mail(arg) = command {
             let arg = arg.trim();
 
@@ -19,7 +24,9 @@ impl CommandHandler for MailHandler {
             }
 
             let address = arg[5..].trim();
-            let address = address.strip_prefix('<').and_then(|s| s.strip_suffix('>'));
+            trace!("address {}", address);
+            let address = extract_email(address);
+            trace!("address now {:?}", address);
 
             let re = Regex::new(r"^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,}$").unwrap();
 
@@ -52,4 +59,10 @@ impl CommandHandler for MailHandler {
             txn.send_line(500, "Unknown error".into()).await;
         }
     }
+}
+
+fn extract_email(input: &str) -> Option<&str> {
+    let start = input.find('<')?;
+    let end = input[start..].find('>')?;
+    Some(&input[start+1..start+end])
 }
