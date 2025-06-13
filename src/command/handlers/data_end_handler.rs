@@ -71,44 +71,6 @@ impl CommandHandler for DataEndHandler {
                 }
             }
 
-
-
-            // for mailbox in mailboxes {
-            //     if let Some((user, domain)) = mailbox.split_once("@") {
-            //         let user = user.to_owned();
-            //         let domain = domain.to_owned();
-            //         if &domain == DOMAIN.get().unwrap() {
-            //             check_maildir(&user).await.unwrap();
-            //             write_to_maildir(&user, &body).await.unwrap();
-            //         } else {
-            //             let from = txn.from.clone().unwrap();
-            //             let to = format!("{}@{}", user, domain);
-            //             let body_clone = body.clone();
-            //
-            //             spawn(async move {
-            //                 let transaction = SmtpTransaction::new_client_from_submission(
-            //                     domain.to_string(),
-            //                     from,
-            //                     to,
-            //                 )
-            //                 .await;
-            //
-            //                 match transaction {
-            //                     Ok(mut transaction) => {
-            //                         if let Err(e) = transaction.handle_connection(body_clone).await
-            //                         {
-            //                             warn!("Relay error: {}", e);
-            //                         }
-            //                     }
-            //                     Err(e) => {
-            //                         warn!("Failed to create SMTP transaction: {}", e);
-            //                     }
-            //                 };
-            //             });
-            //         }
-            //     }
-            // }
-
             txn.state = SmtpState::Greeted;
             txn.from = None;
             txn.to = None;
