@@ -19,7 +19,17 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    info!("Patine prototype initializing...");
+    info!(r"                              ");
+    info!(r"             _   _            ");
+    info!(r"            | | (_)           ");
+    info!(r" _ __   __ _| |_ _ _ __   ___ ");
+    info!(r"| '_ \ / _` | __| | '_ \ / _ \");
+    info!(r"| |_) | (_| | |_| | | | |  __/");
+    info!(r"| .__/ \__,_|\__|_|_| |_|\___|");
+    info!(r"| |                           ");
+    info!(r"|_|                           ");
+    info!(r"                              ");
+    info!("Patine 0.1-demo initializing...");
 
     load_config();
 
