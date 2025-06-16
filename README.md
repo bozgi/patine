@@ -1,9 +1,10 @@
-# E-mail server software written in Rust
+# E-mail software written in Rust
 
-This is a work in progress implementation of RFC 5321 
+This is a work in progress implementation of RFC 5321 (SMTP)
 and some other standards that make the current E-mail 
 safe and usable. It should not be used in production at 
-this point.
+this point. This software can receive and relay mails with
+open relay blocking and has support for AUTH and STARTTLS. 
 
 # Installation and setup
 
@@ -61,7 +62,7 @@ Maildir standard. This defaults to `/var/mail/$username`.
 
 Once all setup is complete run
 
-```
+```bash
 tmux
 sudo -u patine ./patine
 ```
@@ -71,6 +72,7 @@ your firewall.
 
 # Reading the mail
 
-I recommend using [Dovecot](https://dovecot.org). You will need
-to use Maildir. Dovecot also uses PAM, which is convenient. You
-can use the same certificates as earlier for TLS.
+I recommend using [Dovecot](https://dovecot.org), this will definetly work. 
+You will need to use Maildir. Dovecot also uses PAM, which is convenient. 
+You can use the same certificates as earlier for TLS. I recommend IMAP over
+POP3.
