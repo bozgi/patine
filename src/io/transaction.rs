@@ -206,7 +206,7 @@ impl SmtpTransaction<SmtpResponse, SmtpCommand> {
         self.expect_response(250).await?;
 
         self.framed.send(Quit).await?;
-        self.expect_response(250).await?;
+        self.expect_response(200).await?;
 
         Ok(())
     }
